@@ -1,7 +1,7 @@
 package Net::Packet::ARP;
 
-# $Date: 2005/01/26 21:57:49 $
-# $Revision: 1.2.2.29 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.31 $
 
 use strict;
 use warnings;
@@ -13,6 +13,8 @@ our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
 use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv4Addr convertMac inetAton inetNtoa);
 use Net::Packet::Consts qw(:arp :layer);
+
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    hType
@@ -152,7 +154,7 @@ __END__
 
 =head1 NAME
 
-Net::Packet::ARP - ARP layer 3 object
+Net::Packet::ARP - Address Resolution Protocol layer 3 object
 
 =head1 SYNOPSIS
 

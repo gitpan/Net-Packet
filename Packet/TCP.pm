@@ -1,7 +1,7 @@
 package Net::Packet::TCP;
 
-# $Date: 2005/01/26 22:01:01 $
-# $Revision: 1.2.2.38 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.39 $
 
 use strict;
 use warnings;
@@ -13,6 +13,9 @@ our @ISA = qw(Net::Packet::Layer4 Class::Gomor::Hash);
 use Net::Packet::Utils qw(inetChecksum getRandomHighPort getRandom32bitsInt
    inetAton inet6Aton);
 use Net::Packet::Consts qw(:tcp :layer);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    src

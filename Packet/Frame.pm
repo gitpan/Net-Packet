@@ -1,7 +1,7 @@
 package Net::Packet::Frame;
 
-# $Date: 2005/01/25 12:37:10 $
-# $Revision: 1.2.2.45 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.47 $
 
 use warnings;
 use strict;
@@ -23,6 +23,8 @@ require Net::Packet::Layer7;
 require Net::Packet::NULL;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
+
+our $VERSION = $Net::Packet::VERSION;
 
 use Time::HiRes qw(time);
 use Net::Packet qw($Env);
@@ -366,7 +368,8 @@ sub getFilter {
                     " and dst host @{[$self->l3->src]})";
       }
       elsif ($self->isArp) {
-         $filter .= "(arp)";
+         $filter .= "(arp and src host @{[$self->l3->dstIp]}".
+                    " and dst host @{[$self->l3->srcIp]})";
       }
    }
     

@@ -1,7 +1,7 @@
 package Net::Packet::ETH;
 
-# $Date: 2005/01/26 21:57:49 $
-# $Revision: 1.2.2.23 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.24 $
 
 use strict;
 use warnings;
@@ -17,6 +17,8 @@ BEGIN {
 use Net::Packet qw($Env);
 use Net::Packet::Utils qw(convertMac);
 use Net::Packet::Consts qw(:eth :layer);
+
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    src

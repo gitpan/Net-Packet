@@ -1,13 +1,16 @@
 package Net::Packet::Consts;
 
-# $Date: 2005/01/26 20:07:12 $
-# $Revision: 1.1.2.7 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.1.2.8 $
 
 use strict;
 use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our %EXPORT_TAGS = (
    desc => [qw(

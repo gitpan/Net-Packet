@@ -1,7 +1,7 @@
 package Net::Pkt;
 
-# $Date: 2005/01/27 21:04:44 $
-# $Revision: 1.2.2.13 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.15 $
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -10,6 +10,8 @@ use Net::Packet         qw($Env);
 use Net::Packet::Utils  qw(:all);
 use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :null :ipv4 :ipv6 :tcp
    :udp :icmpv4);
+
+our $VERSION = $Net::Packet::VERSION;
 
 require Net::Packet::Env;
 require Net::Packet::Dump;
@@ -40,7 +42,7 @@ our @EXPORT = (
 
 =head1 NAME
    
-Net::Pkt - just loads all of Net::Packet classes and imports all sub routines, constants and globals
+Net::Pkt - just loads all of Net::Packet classes and imports all subroutines, constants and globals
 
 =head1 SYNOPSIS
 

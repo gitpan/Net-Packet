@@ -1,7 +1,7 @@
 package Net::Packet::DescL2;
 
-# $Date: 2005/01/25 12:37:10 $
-# $Revision: 1.2.2.11 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.12 $
 
 use strict;
 use warnings;
@@ -9,6 +9,9 @@ use Carp;
 
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 use IO::Socket;
 

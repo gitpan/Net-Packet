@@ -1,13 +1,16 @@
 package Net::Packet::Utils;
 
-# $Date: 2005/01/27 21:04:14 $
-# $Revision: 1.1.2.11 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.1.2.13 $
 
 use strict;
 use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our %EXPORT_TAGS = (
    all => [qw(
@@ -30,6 +33,8 @@ our %EXPORT_TAGS = (
       inetNtoa
       inet6Aton
       inet6Ntoa
+      explodeIps
+      explodePorts
    )],
 );
 

@@ -1,7 +1,7 @@
 package Net::Packet::Layer7;
 
-# $Date: 2005/01/23 10:53:24 $
-# $Revision: 1.1.1.1.4.19 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.1.1.1.4.20 $
 
 use strict;
 use warnings;
@@ -11,6 +11,9 @@ require Class::Gomor::Hash;
 our @ISA = qw(Net::Packet::Layer Class::Gomor::Hash);
 
 use Net::Packet::Consts qw(:layer);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    data

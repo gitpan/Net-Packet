@@ -1,5 +1,11 @@
 Revision history for Perl extension Net::Packet.
 
+2.01 Tue Feb  1 17:28:04 CET 2005
+   - bugfix: added explodeIps() explodePorts() into export in Utils.pm
+   - bugfix: flush() in Dump.pm
+   - getFilter(): better pcap filter for ARP packets
+   - minor changes in various pod
+
 2.00 Thu Jan 27 22:12:41 CET 2005
    - major release, backward compatibility broken
    - full documentation
@@ -10,6 +16,8 @@ Revision history for Perl extension Net::Packet.
      o Layer2/NULL
      o Layer3/IPv6
    - sending frames at DescL4 now fully works
+   - huge speed improvements
+   - some memory usage improvements
    - many many bugfixes
 
 1.28 Thr Dec  2 20:36:11 CEST 2004

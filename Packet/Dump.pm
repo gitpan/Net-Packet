@@ -1,7 +1,7 @@
 package Net::Packet::Dump;
 
-# $Date: 2005/01/27 18:29:45 $
-# $Revision: 1.2.2.31 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.33 $
 
 use strict;
 use warnings;
@@ -13,6 +13,8 @@ our @ISA = qw(Class::Gomor::Hash);
 use Net::Packet qw($Env);
 require Net::Packet::Frame;
 use Net::Packet::Utils qw(getRandom32bitsInt getPcapLink);
+
+our $VERSION = $Net::Packet::VERSION;
 
 use Net::Pcap;
 use IO::File;
@@ -157,7 +159,7 @@ sub stop {
 sub flush {
    my $self = shift;
    $self->frames([]);
-   $self->framesSorted({});
+   $self->{framesSorted} = {};
 }
 
 sub _setFilter {

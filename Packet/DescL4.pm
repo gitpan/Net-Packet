@@ -1,7 +1,7 @@
 package Net::Packet::DescL4;
 
-# $Date: 2005/01/27 21:26:24 $
-# $Revision: 1.2.2.19 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.20 $
 
 use strict;
 use warnings;
@@ -9,6 +9,9 @@ use warnings;
 require Net::Packet::Desc;
 require Class::Gomor::Hash;
 our @ISA = qw(Net::Packet::Desc Class::Gomor::Hash);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 use Carp;
 use Socket;

@@ -1,12 +1,15 @@
 package Net::Packet::Layer4;
 
-# $Date: 2005/01/18 22:09:23 $
-# $Revision: 1.1.1.1.4.8 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.1.1.1.4.9 $
 
 require Net::Packet::Layer;
 our @ISA = qw(Net::Packet::Layer);
 
 use Net::Packet::Consts qw(:layer);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 sub layer { NP_LAYER_N_4 }
 

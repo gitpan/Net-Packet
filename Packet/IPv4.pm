@@ -1,7 +1,7 @@
 package Net::Packet::IPv4;
 
-# $Date: 2005/01/26 22:01:01 $
-# $Revision: 1.2.2.30 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.31 $
 
 use strict;
 use warnings;
@@ -14,6 +14,8 @@ use Carp;
 use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa);
 use Net::Packet::Consts qw(:ipv4 :layer);
+
+our $VERSION = $Net::Packet::VERSION;
 
 BEGIN {
    my $osname = {

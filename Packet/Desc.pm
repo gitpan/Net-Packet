@@ -1,7 +1,7 @@
 package Net::Packet::Desc;
 
-# $Date: 2005/01/23 15:48:12 $
-# $Revision: 1.2.2.20 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.21 $
 
 use strict;
 use warnings;
@@ -13,6 +13,8 @@ our @ISA = qw(Exporter Class::Gomor::Hash);
 
 use Net::Packet qw($Env);
 use Net::Packet::Consts qw(:desc);
+
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    env

@@ -1,7 +1,7 @@
 package Net::Packet::ICMPv4;
 
-# $Date: 2005/01/27 20:43:09 $
-# $Revision: 1.2.2.25 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.2.2.26 $
 
 use strict;
 use warnings;
@@ -15,6 +15,9 @@ use Net::Packet::Utils qw(getRandom16bitsInt getRandom32bitsInt inetChecksum
 use Net::Packet::Consts qw(:icmpv4 :layer);
 require Net::Packet::IPv4;
 require Net::Packet::Frame;
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    type

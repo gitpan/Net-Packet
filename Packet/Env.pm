@@ -1,7 +1,7 @@
 package Net::Packet::Env;
 
-# $Date: 2005/01/23 15:44:17 $
-# $Revision: 1.1.2.12 $
+# $Date: 2005/02/01 16:29:16 $
+# $Revision: 1.1.2.13 $
 
 use strict;
 use warnings;
@@ -11,6 +11,9 @@ our @ISA = qw(Class::Gomor::Hash);
 
 use Net::Packet::Utils qw(autoDev autoMac autoIp autoIp6 getHostIpv4Addr
    getHostIpv6Addr);
+
+require Net::Packet;
+our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    dev
