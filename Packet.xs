@@ -1,3 +1,19 @@
+/*
+ * $Date: 2005/01/26 19:34:48 $
+ * $Revision: 1.1.1.1.4.2 $
+ *
+ * AUTHOR
+ *
+ * Patrice <GomoR> Auffret
+ *
+ * COPYRIGHT AND LICENSE
+ *
+ * Copyright (c) 2004-2005, Patrice <GomoR> Auffret
+ *
+ * You may distribute this module under the terms of the Artistic license.
+ * See Copying file in the source distribution archive.
+ */
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -38,12 +54,13 @@ netpacket_open_l2(arg0)
    char * arg0
 
 int
-netpacket_tcpdump(arg0, arg1, arg2, arg3, arg4)
+netpacket_tcpdump(arg0, arg1, arg2, arg3, arg4, arg5)
    char *arg0
    char *arg1
    char *arg2
    int   arg3
    int   arg4
+   int   arg5
 
 FILE *
 netpacket_pcap_fp(arg0)

@@ -1,21 +1,13 @@
 Tested ok against (only x86 architectures supported for now):
-FreeBSD 5.2
-OpenBSD 3.2
-NetBSD  1.6.2
-Linux 2.4 (Red Hat 7.2 with RPM updates)
-Linux 2.6 (Debian)
+FreeBSD 5.3 - Perl 5.8
+Linux 2.4 (Red Hat 7.2) - Perl 5.6
 
-Net::Packet version 1.28
+Net::Packet version 2.00
 ====================
 
-This module is a unified framework to craft, send and receive packets at layers 
-2, 3, 4 and 7 (but 4 and 7 are just here for completeness, they have not been 
-thoroughly tested. And you should use IO::Socket for layer 7, anyway).
+This module is a unified framework to craft, send and receive packets at layers 2, 3, 4 and 7.
 
-Basically, you forge each layer of a frame (Net::Packet::IPv4 for layer 3, 
-Net::Packet::TCP for layer 4 ; for example), and pack all of this into a 
-Net::Packet::Frame object. Then, you can write it to the network, and use 
-Net::Packet::Dump to receive responses.
+Basically, you forge each layer of a frame (Net::Packet::IPv4 for layer 3, Net::Packet::TCP for layer 4 ; for example), and pack all of this into a Net::Packet::Frame object. Then, you can send the frame to the network, and receive it easily, since the response is automatically searched for and matched against the request.
 
 If you want some layer 2, 3 or 4 protocol encoding/decoding to be added, just ask, and give a corresponding .pcap file ;)
 
@@ -38,26 +30,32 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Perl v5.6.1
-  Net::Pcap
+  Class::Gomor::Hash
   IO::Interface
+  Net::IPv6Addr
+  Net::Pcap
+  Socket6
   Time::HiRes
+
+  C libraries:
   libpcap
+
+GETTING HELP
+
+A mailing list is available for all questions concerning Net::Packet, just send a subscription request to netpacket-users@gomor.org.
 
 LIMITATIONS
 
-Does NOT work under Microsoft Windows.
+Does NOT work under Microsoft Windows, nor big endian architecture. In fact, it does only work with Linux, FreeBSD, OpenBSD and NetBSD.
 
-If auto* subs do not work, you will need to set $Net::Packet::Dev, 
-$Net::Packet::Ip, $Net::Packet::Mac globals manually for each of your 
-Net::Packet programs.
+If auto* subs do not work, you will need to set $Env->dev, $Env->ip, $Env->mac manually for each of your Net::Packet programs.
 
-Performances (memory usage, object creation speed) maye be quite limited for 
-now. I will work on it in the near (or not) future.
+Performances (memory usage, object creation speed) maye be quite limited for now. I will work on it in the near (or not) future. So this module can only handle a few thousand packets on a 512MB RAM machine.
 
 COPYRIGHT AND LICENSE
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.
 
-Copyright (c) 2004, Patrice <GomoR> Auffret
+Copyright (c) 2004-2005, Patrice <GomoR> Auffret
 

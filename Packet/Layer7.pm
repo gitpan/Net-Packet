@@ -1,96 +1,44 @@
 package Net::Packet::Layer7;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2005/01/23 10:53:24 $
+# $Revision: 1.1.1.1.4.19 $
 
 use strict;
 use warnings;
-use Carp;
 
 require Net::Packet::Layer;
-our @ISA = qw(Net::Packet::Layer);
+require Class::Gomor::Hash;
+our @ISA = qw(Net::Packet::Layer Class::Gomor::Hash);
 
-sub layer { Net::Packet::Frame::NETPKT_L_7() }
+use Net::Packet::Consts qw(:layer);
 
-our @AccessorsScalar = qw(
+our @AS = qw(
    data
-   dataLength
 );
 
-sub new {
-   my $self = shift->SUPER::new(@_);
+__PACKAGE__->buildAccessorsScalar(\@AS);
 
-   # Compute length only if not raw param passed, since otherwise
-   # unpack will take care of if
-   $self->_computeDataLength unless $self->raw;
+sub new { shift->SUPER::new(@_) }
 
-   return $self;
+sub getLength {
+   my $self = shift;
+   $self->data ? length($self->data) : 0;
 }
+
+sub layer { NP_LAYER_N_7 }
 
 sub pack {
    my $self = shift;
-
-   $self->raw(pack('a*', $self->data));
-   $self->rawLength(length $self->raw);
+   $self->raw($self->SUPER::pack('a*', $self->data))
+      or return undef;
+   1;
 }
 
 sub unpack {
    my $self = shift;
-
-   $self->data(unpack('a*', $self->raw));
-   $self->dataLength(length $self->data);
-}
-
-sub _computeDataLength {
-   my $self = shift;
-   $self->data
-      ? $self->dataLength(length $self->data)
-      : $self->dataLength(0);
-}
-
-sub computeLengths { shift->_computeDataLength }
-
-sub recv {
-   my ($self, $type) = @_;
-
-   if ($type =~ /^\d+$/) {
-      return $self->_recvSize($type);
-   }
-   elsif ($type eq 'getline') {
-      return $self->_recvLine;
-   }
-
-   return undef;
-}
-
-sub _recvLine { $Net::Packet::Desc->_Io->getline }
-
-sub _recvSize {
-   my ($self, $size) = @_;
-
-   my $read;
-   my $sel = IO::Select->new($Net::Packet::Desc->_Io);
-   while ($sel->can_read(10)) {
-      my $local;
-
-      my $ret = $Net::Packet::Desc->_Io->sysread($local, $size);
-      $read .= $local;
-
-      if ($ret == 0) {
-         carp("@{[(caller(0))[3]]}: sysread: EOF received");
-         $read .= "[EOF]\n";
-         last;
-      }
-      elsif ($ret > 0) {
-         next;
-      }
-      else {
-         carp("@{[(caller(0))[3]]}: sysread: $!");
-         last;
-      }
-   }
-
-   return $read;
+   $self->data($self->SUPER::unpack('a*', $self->raw))
+      or return undef;
+   1;
 }
 
 sub dump {
@@ -98,26 +46,75 @@ sub dump {
 
    my $l = $self->layer;
    my $i = $self->is;
-   printf
-      "$l:+$i: %s\n",
-         CORE::unpack('H*', $self->data),
-   ;
+   sprintf "$l:+$i: %s\n", $self->SUPER::unpack('H*', $self->data)
+      or return undef;
 }
 
 sub print {
    my $self = shift;
-   print "@{[$self->layer]}:+@{[$self->is]}: ".
-         "@{[CORE::unpack('H*', $self->data)]}\n";
-}
 
-for my $a (@AccessorsScalar) {
-   no strict 'refs';
-   *$a = sub { shift->_AccessorScalar($a, @_) }
+   my $l = $self->layer;
+   my $i = $self->is;
+   sprintf "$l:+$i: dataLength:%d\n".
+           "$l: $i: data: %s",
+      $self->getLength, $self->SUPER::unpack('H*', $self->data)
+         or return undef;
 }
 
 1;
 
 __END__
+
+=head1 NAME
+
+Net::Packet::Layer7 - application layer object
+
+=head1 SYNOPSIS
+
+   use Net::Packet::Layer7;
+
+   # Build layer to inject to network
+   my $l7a = Net::Packet::Layer7->new(data => "GET / HTTP/1.0\r\n\r\n");
+
+   # Decode from network to create the object
+   # Usually, you do not use this, it is used by Net::Packet::Frame
+   my $l7b = Net::Packet::Layer7->new(raw => $rawFromNetwork);
+
+   print $l7a->print, "\n";
+
+=head1 DESCRIPTION
+
+This class is different from B<Net::Packet::Layer2> to 4, since we do not decode application layers (Ethereal is good), so this is not a base class, but a final class.
+
+See also B<Net::Packet::Layer> for other attributes and methods.
+
+=head1 ATTRIBUTES
+
+=over 4
+
+=item B<data>
+
+Stores the raw data of the application layer.
+
+=back
+
+=head1 METHODS
+
+=over 4
+
+=item B<new>
+
+Object constructor. No default values.
+
+=item B<pack>
+
+Packs all attributes into a raw format, in order to inject to network.
+
+=item B<unpack>
+
+Unpacks raw data from network and stores attributes into the object.
+
+=back
 
 =head1 AUTHOR
        
@@ -125,7 +122,7 @@ Patrice E<lt>GomoRE<gt> Auffret
    
 =head1 COPYRIGHT AND LICENSE
    
-Copyright (c) 2004, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

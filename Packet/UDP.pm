@@ -1,150 +1,208 @@
 package Net::Packet::UDP;
 
-# $Date: 2004/10/03 18:31:36 $
-# $Revision: 1.1.1.1.2.2 $
+# $Date: 2005/01/26 21:57:49 $
+# $Revision: 1.2.2.31 $
 
 use strict;
 use warnings;
-use Carp;
 
-require Exporter;
 require Net::Packet::Layer4;
-our @ISA = qw(Net::Packet::Layer4 Exporter);
-our @EXPORT_OK = qw( 
-   NETPKT_UDP_HDR_LEN
-);
+require Class::Gomor::Hash;
+our @ISA = qw(Net::Packet::Layer4 Class::Gomor::Hash);
 
-use Socket; # inet_*
-use Net::Packet qw(inetChecksum);
+use Net::Packet::Utils qw(inetChecksum getRandomHighPort inetAton inet6Aton);
+use Net::Packet::Consts qw(:udp :layer);
 
-use constant NETPKT_UDP_HDR_LEN => 8;
-
-our @AccessorsScalar = qw(
+our @AS = qw(
    src
    dst
-   len
+   length
    checksum
-   headerLength
-   totalLength
 );
 
+__PACKAGE__->buildAccessorsScalar(\@AS);
+
 sub new {
-   my $self = shift->SUPER::new(
-      src      => Net::Packet->getRandomHighPort,
+   shift->SUPER::new(
+      src      => getRandomHighPort(),
       dst      => 0,
-      len      => 0,
+      length   => 0,
       checksum => 0,
       @_,
    );
-
-   # Compute helper lengths if packet is unpacked (and accessors are set up)
-   unless ($self->raw) {
-      $self->_computeHeaderLength;
-   }
-
-   return $self;
 }
 
 sub recv {
-   my ($self, $l3) = @_;
+   my $self  = shift;
+   my $frame = shift;
 
-   my $src   = $l3->src;
-   my $dst   = $l3->dst;
-   my $sport = $self->src;
-   my $dport = $self->dst;
-   
-   for ($Net::Packet::Dump->frames) {
-      if ($_->isFrameUdp) {
-         if ($_->l3->src eq $dst
-         &&  $_->l3->dst eq $src
-         &&  $_->l4->src == $dport
-         &&  $_->l4->dst == $sport) {
-            return $_;
-         }
-      }
-      if ($_->isFrameIcmpv4) {
-         if ($_->l3->dst eq $src) {
-            return $_;
-         }
+   my $env = $frame->env;
+
+   for ($env->dump->framesFor($frame)) {
+      return $_ if $_->timestamp ge $frame->timestamp;
+   }
+
+   my $l2Key = 'all';
+   $l2Key = $frame->l2->getKeyReverse($frame) if $frame->l2;
+
+   my $l3Key = 'all';
+   $l3Key = $frame->l3->is.':'.$frame->l3->src if $frame->l3;
+
+   my $l4Key = 'all';
+   $l4Key = 'ICMP' if $frame->l4;
+
+   my $href = $env->dump->framesSorted;
+   for (@{$href->{$l2Key}{$l3Key}{$l4Key}}) {
+      if (($_->timestamp ge $frame->timestamp)
+      &&   $_->l4->error
+      &&  ($_->l4->error->l4->src == $self->src)
+      &&  ($_->l4->error->l4->dst == $self->dst)) {
+         return $_;
       }
    }
 
-   return undef;
+   undef;
 }
 
 sub pack {
    my $self = shift;
 
    $self->raw(
-      pack('nnnS',
+      $self->SUPER::pack('nnnn',
          $self->src,
          $self->dst,
-         $self->len,
+         $self->length,
          $self->checksum,
       ),
-   );
+   ) or return undef;
 
-   $self->rawLength(length $self->raw);
+   1;
 }
 
 sub unpack {
    my $self = shift;
 
-   my ($src, $dst, $len, $checksum, $payload) = unpack('nnnS a*', $self->raw);
+   my ($src, $dst, $len, $checksum, $payload) =
+      $self->SUPER::unpack('nnnn a*', $self->raw)
+         or return undef;
 
    $self->src($src);
    $self->dst($dst);
-   $self->len($len);
+   $self->length($len);
    $self->checksum($checksum);
    $self->payload($payload);
 
-   $self->_computeHeaderLength;
-   $self->totalLength($self->len);
+   1;
 }
 
-sub _computeHeaderLength { shift->headerLength(NETPKT_UDP_HDR_LEN) }
+sub getLength        { NP_UDP_HDR_LEN                 }
+sub getPayloadLength {
+   my $self = shift;
+   $self->length > $self->getLength
+      ? $self->length - $self->getLength
+      : 0;
+}
 
 sub _computeTotalLength {
-   my ($self, $l7) = @_;
+   my $self  = shift;
+   my $frame = shift;
 
-   # Autocompute header length if not user specified
-   return if $self->len;
+   # Autocompute header length if not user specified
+   return if $self->length;
 
-   my $totalLength = NETPKT_UDP_HDR_LEN;
-   $totalLength += $l7->dataLength if $l7;
-   $self->len($totalLength);
+   my $totalLength = $self->getLength;
+   $totalLength += $frame->l7->getLength if $frame->l7;
+   $self->length($totalLength);
 }
 
 sub computeLengths {
-   my ($self, $l7) = @_[0, 4];
-   $self->_computeHeaderLength;
-   $self->_computeTotalLength($l7);
+   my $self  = shift;
+   my $frame = shift;
+
+   $self->_computeTotalLength($frame);
+   1;
 }
 
 sub computeChecksums {
-   my $self = shift;
-   my ($l2, $l3, $l4, $l7) = @_;
+   my $self  = shift;
+   my $frame = shift;
 
-   my $phpkt =
-      CORE::pack('a4a4CCn nnnS',
-         inet_aton($l3->src),
-         inet_aton($l3->dst),
-         0,
-         $l3->protocol,
-         $self->len,
-         $self->src,
-         $self->dst,
-         $self->len,
-         $self->checksum,
-      );
-   $phpkt .= CORE::pack('a*', $l7->data) if $l7;
+   my $env = $frame->env;
+
+   my $phpkt;
+   if ($frame->l3) {
+      if ($frame->isIpv4) {
+         $phpkt = $self->SUPER::pack('a4a4CCn',
+            inetAton($frame->l3->src),
+            inetAton($frame->l3->dst),
+            0,
+            $frame->l3->protocol,
+            $self->length,
+         ) or return undef;
+      }
+      elsif ($frame->isIpv6) {
+         $phpkt = $self->SUPER::pack('a*a*NnCC',
+            inet6Aton($frame->l3->src),
+            inet6Aton($frame->l3->dst),
+            $frame->l3->payloadLength,
+            0,
+            0,
+            $frame->l3->nextHeader,
+         ) or return undef;
+      }
+   }
+   else {
+      my $totalLength = $self->getLength;
+      $totalLength += $frame->l7->getLength if $frame->l7;
+
+      if ($env->desc->isFamilyIpv4) {
+         $phpkt = $self->SUPER::pack('a4a4CCn',
+            inetAton($env->ip),
+            inetAton($env->desc->target),
+            0,
+            $env->desc->protocol,
+            $totalLength,
+         ) or return undef;
+      }
+      elsif ($env->desc->isFamilyIpv6) {
+         $phpkt = $self->SUPER::pack('a*a*NnCC',
+            inet6Aton($env->ip6),
+            inet6Aton($env->desc->target),
+            $totalLength,
+            0,
+            0,
+            $env->desc->protocol,
+         ) or return undef;
+      }
+   }
+
+   $phpkt .= $self->SUPER::pack('nnnn',
+      $self->src,
+      $self->dst,
+      $self->length,
+      $self->checksum,
+   ) or return undef;
+
+   if ($frame->l7) {
+      $phpkt .= $self->SUPER::pack('a*', $frame->l7->data)
+         or return undef;
+   }
+
    $self->checksum(inetChecksum($phpkt));
+
+   1;
 }
 
-sub encapsulate {
-   shift->payload
-      ? Net::Packet::Frame::NETPKT_LAYER_7()
-      : Net::Packet::Frame::NETPKT_LAYER_NONE();
+sub encapsulate { shift->payload ? NP_LAYER_7 : NP_LAYER_NONE }
+
+sub getKey {
+   my $self = shift;
+   $self->is.':'.$self->src.'-'.$self->dst;
+}
+
+sub getKeyReverse {
+   my $self = shift;
+   $self->is.':'.$self->dst.'-'.$self->src;
 }
 
 sub print {
@@ -152,202 +210,102 @@ sub print {
 
    my $i = $self->is;
    my $l = $self->layer;
-   printf
+   sprintf
       "$l:+$i: checksum:0x%.4x  [%d => %d]\n".
-      "$l: $i: size:%d  header:%d  payload:%d\n",
+      "$l: $i: size:%d  header:%d  payload:%d",
          $self->checksum,
          $self->src,
          $self->dst,
-         $self->len,
-         NETPKT_UDP_HDR_LEN,
-         $self->len - NETPKT_UDP_HDR_LEN,
+         $self->length,
+         $self->getLength,
+         $self->getPayloadLength,
    ;
-}
-
-#
-# Accessors
-#
-
-for my $a (@AccessorsScalar) {
-   no strict 'refs';
-   *$a = sub { shift->_AccessorScalar($a, @_) }
 }
 
 1;
 
 __END__
 
-=head1 RFC 768 - User Datagram Protocol
+=head1 NAME
 
-RFC 768                                                        J. Postel
-                                                                     ISI
-                                                          28 August 1980
+Net::Packet::UDP - User Datagram Protocol layer 4 object
 
+=head1 SYNOPSIS
 
+   use Net::Packet::UDP;
 
-                         User Datagram Protocol
-                         ----------------------
+   # Build layer to inject to network
+   my $udp = Net::Packet::UDP->new(
+      dst => 31222,
+   );
 
-Introduction
-------------
+   # Decode from network to create the object
+   # Usually, you do not use this, it is used by Net::Packet::Frame
+   my $udp2 = Net::Packet::UDP->new(raw = $rawFromNetwork);
 
-This User Datagram  Protocol  (UDP)  is  defined  to  make  available  a
-datagram   mode  of  packet-switched   computer   communication  in  the
-environment  of  an  interconnected  set  of  computer  networks.   This
-protocol  assumes  that the Internet  Protocol  (IP)  [1] is used as the
-underlying protocol.
+   print $udp->print, "\n";
 
-This protocol  provides  a procedure  for application  programs  to send
-messages  to other programs  with a minimum  of protocol mechanism.  The
-protocol  is transaction oriented, and delivery and duplicate protection
-are not guaranteed.  Applications requiring ordered reliable delivery of
-streams of data should use the Transmission Control Protocol (TCP) [2].
+=head1 DESCRIPTION
 
-Format
-------
+This modules implements the encoding and decoding of the UDP layer.
 
-                                    
-                  0      7 8     15 16    23 24    31  
-                 +--------+--------+--------+--------+ 
-                 |     Source      |   Destination   | 
-                 |      Port       |      Port       | 
-                 +--------+--------+--------+--------+ 
-                 |                 |                 | 
-                 |     Length      |    Checksum     | 
-                 +--------+--------+--------+--------+ 
-                 |                                     
-                 |          data octets ...            
-                 +---------------- ...                 
+RFC: ftp://ftp.rfc-editor.org/in-notes/rfc768.txt
 
-                      User Datagram Header Format
+See also B<Net::Packet::Layer> and B<Net::Packet::Layer4> for other attributes and methods.
 
-Fields
-------
+=head1 ATTRIBUTES
 
-Source Port is an optional field, when meaningful, it indicates the port
-of the sending  process,  and may be assumed  to be the port  to which a
-reply should  be addressed  in the absence of any other information.  If
-not used, a value of zero is inserted.
+=over 4
 
+=item B<src>
 
+=item B<dst>
 
+Source and destination ports.
 
+=item B<length>
 
-Postel                                                          [page 1]
+The length in bytes of the datagram, including layer 7 payload (that is, layer 4 + layer 7).
 
-                                                             28 Aug 1980
-User Datagram Protocol                                           RFC 768
-Fields
+=item B<checksum>
 
+Checksum of the datagram.
 
+=back
 
-Destination  Port has a meaning  within  the  context  of  a  particular
-internet destination address.
+=head1 METHODS
 
-Length  is the length  in octets  of this user datagram  including  this
-header  and the data.   (This  means  the minimum value of the length is
-eight.)
+=over 4
 
-Checksum is the 16-bit one's complement of the one's complement sum of a
-pseudo header of information from the IP header, the UDP header, and the
-data,  padded  with zero octets  at the end (if  necessary)  to  make  a
-multiple of two octets.
+=item B<new>
 
-The pseudo  header  conceptually prefixed to the UDP header contains the
-source  address,  the destination  address,  the protocol,  and the  UDP
-length.   This information gives protection against misrouted datagrams.
-This checksum procedure is the same as is used in TCP.
+Object constructor. You can pass attributes that will overwrite default ones. Default values:
 
-                  0      7 8     15 16    23 24    31 
-                 +--------+--------+--------+--------+
-                 |          source address           |
-                 +--------+--------+--------+--------+
-                 |        destination address        |
-                 +--------+--------+--------+--------+
-                 |  zero  |protocol|   UDP length    |
-                 +--------+--------+--------+--------+
+src:      getRandomHighPort()
 
-If the computed  checksum  is zero,  it is transmitted  as all ones (the
-equivalent  in one's complement  arithmetic).   An all zero  transmitted
-checksum  value means that the transmitter  generated  no checksum  (for
-debugging or for higher level protocols that don't care).
+dst:      0
 
-User Interface
---------------
+length:   0
 
-A user interface should allow
+checksum: 0
 
-  the creation of new receive ports,
+=item B<recv>
 
-  receive  operations  on the receive  ports that return the data octets
-  and an indication of source port and source address,
+Will search for a matching replies in B<framesSorted> or B<frames> from a B<Net::Packet::Dump> object.
 
-  and an operation  that allows  a datagram  to be sent,  specifying the
-  data, source and destination ports and addresses to be sent.
+=item B<pack>
 
+Packs all attributes into a raw format, in order to inject to network. Returns 1 on success, undef otherwise.
 
+=item B<unpack>
 
+Unpacks raw data from network and stores attributes into the object. Returns 1 on success, undef otherwise.
 
+=item B<getPayloadLength>
 
+Returns the length in bytes of payload (layer 7 object).
 
-[page 2]                                                          Postel
-
-28 Aug 1980
-RFC 768                                           User Datagram Protocol
-                                                            IP Interface
-
-
-
-IP Interface
--------------
-
-The UDP module  must be able to determine  the  source  and  destination
-internet addresses and the protocol field from the internet header.  One
-possible  UDP/IP  interface  would return  the whole  internet  datagram
-including all of the internet header in response to a receive operation.
-Such an interface  would  also allow  the UDP to pass  a  full  internet
-datagram  complete  with header  to the IP to send.  The IP would verify
-certain fields for consistency and compute the internet header checksum.
-
-Protocol Application
---------------------
-
-The major uses of this protocol is the Internet Name Server [3], and the
-Trivial File Transfer [4].
-
-Protocol Number
----------------
-
-This is protocol  17 (21 octal)  when used  in  the  Internet  Protocol.
-Other protocol numbers are listed in [5].
-
-References
-----------
-
-[1]     Postel,   J.,   "Internet  Protocol,"  RFC 760,  USC/Information
-        Sciences Institute, January 1980.
-
-[2]     Postel,    J.,   "Transmission   Control   Protocol,"   RFC 761,
-        USC/Information Sciences Institute, January 1980.
-
-[3]     Postel,  J.,  "Internet  Name Server,"  USC/Information Sciences
-        Institute, IEN 116, August 1979.
-
-[4]     Sollins,  K.,  "The TFTP Protocol,"  Massachusetts  Institute of
-        Technology, IEN 133, January 1980.
-
-[5]     Postel,   J.,   "Assigned   Numbers,"  USC/Information  Sciences
-        Institute, RFC 762, January 1980.
-
-
-
-
-
-
-
-
-
-Postel                                                          [page 3]
+=back
 
 =head1 AUTHOR
 
@@ -355,7 +313,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

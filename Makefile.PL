@@ -1,10 +1,10 @@
-# $Date: 2004/12/02 19:38:43 $
-# $Revision: 1.1.1.1.2.2.2.1 $
+# $Date: 2005/01/16 17:02:02 $
+# $Revision: 1.2.2.2 $
 
 use ExtUtils::MakeMaker;
 
 die("*** Microsoft Windows not supported\n")
-   if $^O =~ /windows/i;
+   if $^O =~ /win/i;
 die("*** Big endian architectures not supported yet\n")
    if unpack("h*", pack("s", 1)) =~ /01/;
 
@@ -36,9 +36,12 @@ WriteMakefile(
    VERSION_FROM  => 'Packet.pm',
    PREREQ_FATAL  => 1,
    PREREQ_PM     => {
-      Time::HiRes   => 0,
-      IO::Interface => 0,
-      Net::Pcap     => 0.04,
+      Time::HiRes        => 0,
+      IO::Interface      => 0,
+      Net::Pcap          => '0.04',
+      Net::IPv6Addr      => 0,
+      Socket6            => 0,
+      Class::Gomor::Hash => '0.20',
    },
    ABSTRACT_FROM => 'Packet.pm',
    AUTHOR        => 'GomoR <netpkt@gomor.org>',

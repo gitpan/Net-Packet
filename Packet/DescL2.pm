@@ -1,7 +1,7 @@
 package Net::Packet::DescL2;
 
-# $Date: 2004/10/03 18:30:23 $
-# $Revision: 1.1.1.1.2.1 $
+# $Date: 2005/01/25 12:37:10 $
+# $Revision: 1.2.2.11 $
 
 use strict;
 use warnings;
@@ -23,46 +23,113 @@ BEGIN {
 sub new {
    my $self = shift->SUPER::new(@_);
 
-   croak("@{[(caller(0))[3]]}: \$Net::Packet::Dev variable not set")
-      unless $Net::Packet::Dev;
+   croak("Must be EUID 0 to create a DescL2 object") if $>;
 
-   my $fd = Net::Packet::netpacket_open_l2($Net::Packet::Dev)
-      or croak("@{[(caller(0))[3]]}: netpacket_open_l2: $Net::Packet::Dev: $!");
+   my $fd = Net::Packet::netpacket_open_l2($self->env->dev)
+      or croak("@{[(caller(0))[3]]}: netpacket_open_l2: ".
+               "@{[$self->env->dev]}: $!");
+
+   # XXX: implement dropping user priv. Does not work now, since 
+   # Net::Packet::Dump also requires privs to open bpf: race condition
+   # ???: maybe we do not need to drop privs here, but only in Dump
+   #$< = $> = getpwnam($ENV{USER}) if $>;
 
    my $io = IO::Socket->new;
    $io->fdopen($fd, "w") or croak("@{[(caller(0))[3]]}: fdopen: $!");
-   $self->_Io($io);
+   $self->_io($io);
 
-   return $self;
+   $self;
 }
 
 sub _sendLinux {
-   my ($self, $raw) = @_;
+   my $self = shift;
+   my $raw  = shift;
 
    # Here is the Linux dirty hack (to choose outgoing device, surely)
-   my $sin = pack('S a14', 0, $Net::Packet::Dev);
-   CORE::send($self->_Io, $raw, 0, $sin)
-      or croak("@{[(caller(0))[3]]}: send: $!");
+   my $sin = pack('S a14', 0, $self->env->dev);
+
+   while (1) {
+      my $ret = CORE::send($self->_io, $raw, 0, $sin);
+      unless ($ret) {
+         if ($!{ENOBUFS}) {
+            $self->debugPrint(
+               2, "send: ENOBUFS returned, sleeping for 1 second"
+            );
+            sleep 1;
+            next;
+         }
+         elsif ($!{EHOSTDOWN}) {
+            $self->debugPrint(2, "send: host is down");
+            last;
+         }
+         carp("@{[(caller(0))[3]]}: send: $!");
+      }
+      last;
+   }
 }
 
 sub _sendOther {
-   my ($self, $raw) = @_;
+   my $self = shift;
+   my $raw  = shift;
 
-   $self->_Io->syswrite($raw, length $raw)
-      or croak("@{[(caller(0))[3]]}: syswrite: $!");
+   while (1) {
+      my $ret = $self->_io->syswrite($raw, length $raw);
+      unless ($ret) {
+         if ($!{ENOBUFS}) {  
+            $self->debugPrint(
+               2, "syswrite: ENOBUFS returned, sleeping for 1 second"
+            );
+            sleep 1;
+            next;
+         }
+         elsif ($!{EHOSTDOWN}) {
+            $self->debugPrint(2, "syswrite: host is down");
+            last;
+         }
+         carp("@{[(caller(0))[3]]}: syswrite: $!") unless $ret;
+      }
+      last;
+   }
 }
 
 1;
 
 __END__
    
+=head1 NAME
+
+Net::Packet::DescL2 - object for a link layer (layer 2) descriptor
+
+=head1 SYNOPSIS
+
+   use Net::Packet::DescL2;
+
+   # Usually, you use it to send ARP frames, that is crafted from ETH layer
+   my $d2 = Net::Packet::DescL2->new;
+
+   $d2->send($rawStringToNetwork);
+
+=head1 DESCRIPTION
+
+See also B<Net::Packet::Desc> for other attributes and methods.
+
+=head1 METHODS
+
+=over 4
+
+=item B<new>
+
+Create the object, using default $Net::Packet::Env object to choose which device to use (see B<Net::Packet::Env>). When the object is created, the $Net::Packet::Env object as its B<desc> attributes set to it. Use B<noEnvSet> to avoid that.
+
+=back
+
 =head1 AUTHOR
    
 Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
       
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

@@ -1,212 +1,241 @@
 package Net::Packet::Frame;
 
-# $Date: 2004/10/02 12:58:59 $
-# $Revision: 1.1.1.1.2.5 $
+# $Date: 2005/01/25 12:37:10 $
+# $Revision: 1.2.2.45 $
 
 use warnings;
 use strict;
 use Carp;
 
-require Exporter;
+require Class::Gomor::Hash;
+our @ISA = qw(Class::Gomor::Hash);
+
 require Net::Packet;
-our @ISA = qw(Net::Packet Exporter);
-our @EXPORT_OK = qw(
-   NETPKT_LAYER
-   NETPKT_LAYER_ETH
-   NETPKT_LAYER_ARP
-   NETPKT_LAYER_IPv4
-   NETPKT_LAYER_TCP
-   NETPKT_LAYER_UDP
-   NETPKT_LAYER_ICMPv4
-   NETPKT_LAYER_7
-   NETPKT_LAYER_NONE
-   NETPKT_LAYER_UNKNOWN
-);
+require Net::Packet::Dump;
+require Net::Packet::ETH;
+require Net::Packet::ARP;
+require Net::Packet::IPv4;
+require Net::Packet::IPv6;
+require Net::Packet::TCP;
+require Net::Packet::UDP;
+require Net::Packet::ICMPv4;
+require Net::Packet::Layer7;
+require Net::Packet::NULL;
+require Net::Packet::RAW;
+require Net::Packet::SLL;
 
-use Net::Packet::ETH;
-use Net::Packet::ARP;
-use Net::Packet::IPv4;
-use Net::Packet::TCP;
-use Net::Packet::UDP;
-use Net::Packet::ICMPv4;
-use Net::Packet::Layer7;
+use Time::HiRes qw(time);
+use Net::Packet qw($Env);
+use Net::Packet::Consts qw(:dump :layer);
 
-use constant NETPKT_LAYER         => 'Net::Packet::';
-use constant NETPKT_LAYER_ETH     => 'ETH';
-use constant NETPKT_LAYER_ARP     => 'ARP';
-use constant NETPKT_LAYER_IPv4    => 'IPv4';
-use constant NETPKT_LAYER_TCP     => 'TCP';
-use constant NETPKT_LAYER_UDP     => 'UDP';
-use constant NETPKT_LAYER_ICMPv4  => 'ICMPv4';
-use constant NETPKT_LAYER_7       => 'Layer7';
-use constant NETPKT_LAYER_NONE    => 'NONE';
-use constant NETPKT_LAYER_UNKNOWN => 'UNKNOWN';
-
-use constant NETPKT_L_2       => 'L2';
-use constant NETPKT_L_3       => 'L3';
-use constant NETPKT_L_4       => 'L4';
-use constant NETPKT_L_7       => 'L7';
-use constant NETPKT_L_UNKNOWN => 'L?';
-
-BEGIN {
-   # Some aliases
-   *ipFlags = \&ipOff;
-   *l3Print = \&ipPrint;
-   *l4Print = \&tcpPrint;
-}
-
-our @AccessorsScalar = qw(
+our @AS = qw(
+   env
+   raw
+   padding
    l2
    l3
    l4
    l7
-   raw
-   rawLength
-   payload
-   payloadLength
    reply
+   timestamp
 );
 
+__PACKAGE__->buildAccessorsScalar(\@AS);
+
 sub new {
-   my $self = shift->SUPER::new(@_);
+   my $self = shift->SUPER::new(
+      timestamp => time(),
+      env       => $Env,
+      @_,
+   );
 
-   croak("@{[(caller(0))[3]]}: you must either pass `raw' parameter or some ".
-         "`l[N]' parameters (example: @{[(caller(0))[3]]}(l2 => \$l2, l3 => ".
-         "\$l3)")
-      unless $self->raw || ($self->l2 || $self->l3 || $self->l4 || $self->l7);
+   my $env = $self->env;
 
-   unless ($Net::Packet::Desc) {
+   unless ($env->desc) {
       if ($self->l2) {
          require Net::Packet::DescL2;
-         $Net::Packet::Desc = Net::Packet::DescL2->new;
-         $self->debugPrint("DescL2 object created");
+         $env->desc(Net::Packet::DescL2->new);
+         $self->debugPrint(1, "DescL2 object created");
       }
       elsif ($self->l3) {
          require Net::Packet::DescL3;
-         $Net::Packet::Desc = Net::Packet::DescL3->new(ipDst => $self->ipDst);
-         $self->debugPrint("DescL3 object created");
+         $env->desc(Net::Packet::DescL3->new(target => $self->l3->dst));
+         $self->debugPrint(1, "DescL3 object created");
       }
       elsif ($self->l4) {
-         require Net::Packet::DescL4;
-         $Net::Packet::Desc = Net::Packet::DescL4->new;
-         $self->debugPrint("DescL4 object created");
+         croak("You must manually create a DescL4 object");
       }
    }
 
-   unless ($Net::Packet::Dump) {
-      use Net::Packet::Dump;
-      $Net::Packet::Dump = Net::Packet::Dump->new(
-         filter    => $self->getFilter,
-         callStart => 0,
+   unless ($env->dump) {
+      require Net::Packet::Dump;
+      $env->dump(
+         Net::Packet::Dump->new(
+            filter    => $Env->filter || $self->getFilter,
+            callStart => 0,
+         ),
       );
-      $self->debugPrint("Dump object created");
+      $self->debugPrint(1, "Dump object created");
    }
 
-   $self->raw
-      ? return $self->_decodeFromNetwork
-      : return $self->_encodeToNetwork;
+   $self->raw ? $self->unpack : $self->pack;
 }
 
-sub _decodeFromL3 {
+sub getLengthFromL7 { my $self = shift; $self->l7 ? $self->l7->getLength : 0 }
+sub getLengthFromL4 {
+   my $self = shift;
+   my $len  = 0;
+   $len    += $self->l4->getLength if $self->l4;
+   $len    += $self->getLengthFromL7;
+   $len || 0;
+}
+sub getLengthFromL3 {
+   my $self = shift;
+   my $len  = 0;
+   $len    += $self->l3->getLength if $self->l3;
+   $len    += $self->getLengthFromL4;
+   $len || 0;
+}
+sub getLengthFromL2 {
+   my $self = shift;
+   my $len  = 0;
+   $len    += $self->l2->getLength if $self->l2;
+   $len    += $self->getLengthFromL3;
+   $len || 0;
+}
+sub getLength { shift->getLengthFromL3 }
+
+sub _unpackFromL3 {
    my $self = shift;
 
    my $nextLayer;
    while (1) {
+      my $l3;
+
       # First, try IPv4
-      # XXX: try with IPv6 when it is done
-      my $l3 = Net::Packet::IPv4->new(raw => $self->raw);
-      $l3 && $l3->encapsulate
-         ? $self->l3($l3)
-         : return undef;
+      $l3 = Net::Packet::IPv4->new(raw => $self->raw) or return undef;
+      unless ($l3->version == 4) {
+         # Then IPv6
+         $l3 = Net::Packet::IPv6->new(raw => $self->raw) or return undef;
+         unless ($l3->version == 6) {
+            warn("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
+            return undef;
+         }
+      }
 
-      last if $self->l3->encapsulate eq NETPKT_LAYER_NONE;
-      $nextLayer = NETPKT_LAYER. $self->l3->encapsulate;
+      if ($l3->encapsulate eq NP_LAYER_UNKNOWN) {
+         warn("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
+         last;
+      }
 
-      $self->l4($nextLayer->new(raw => $self->l3->payload));
+      $self->l3($l3);
 
-      # Here, no check; it is just raw layer 7 application data
-      last if $self->l4->encapsulate eq NETPKT_LAYER_NONE;
-      $nextLayer = NETPKT_LAYER. $self->l4->encapsulate;
+      last if $self->l3->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->l3->encapsulate;
 
-      $self->l7($nextLayer->new(raw => $self->l4->payload));
+      $self->l4($nextLayer->new(raw => $self->l3->payload))
+         or return undef;
+
+      # Here, no check; it is just raw layer 7 application data
+      last if $self->l4->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->l4->encapsulate;
+
+      $self->l7($nextLayer->new(raw => $self->l4->payload))
+         or return undef;
    
       last;
    }
 
-   $self->rawLength(length $self->raw);
-
-   return $self;
+   $self;
 }
 
-sub _decodeFromNetwork {
+sub unpack {
    my $self = shift;
+
+   my $whichLink = {
+      NP_DUMP_LINK_NULL()   =>
+         sub { Net::Packet::NULL->new(raw => $self->raw) },
+      NP_DUMP_LINK_EN10MB() =>
+         sub { Net::Packet::ETH->new(raw => $self->raw)  },
+      NP_DUMP_LINK_RAW()    =>
+         sub { Net::Packet::RAW->new(raw => $self->raw)  },
+      NP_DUMP_LINK_SLL()    =>
+         sub { Net::Packet::SLL->new(raw => $self->raw)  },
+   };
 
    my $nextLayer;
    while (1) {
-      # We must begin with something to identify next layers
-      # If it fails at l2, maybe this begins at l3 (ex: in ICMP error messages)
-      my $l2 = Net::Packet::ETH->new(raw => $self->raw);
-      $l2->isTypeIpv4 || $l2->isTypeArp
-         ? $self->l2($l2)
-         : return $self->_decodeFromL3;
+      unless (exists $whichLink->{$self->env->link}) {
+         warn("Unable to unpack Frame for this datalink type: ".
+              "@{[$self->env->link]}\n");
+         last;
+      }
 
-      last if $self->l2->encapsulate eq NETPKT_LAYER_NONE;
-      $nextLayer = NETPKT_LAYER. $self->l2->encapsulate;
+      my $l2 = $whichLink->{$self->env->link}() or return undef;
 
-      # Here, the next layer can't be UNKNOWN
-      $self->l3($nextLayer->new(raw => $l2->payload));
+      $self->l2($l2);
 
-      # But here, it can be
-      return undef if $self->l3->encapsulate eq NETPKT_LAYER_UNKNOWN;
+      # For example, with a raw Datalink type (RAW.pm),
+      # we don't know what is encapsulated
+      if ($self->l2->encapsulate eq NP_LAYER_UNKNOWN) {
+         return $self->_unpackFromL3;
+      }
 
-      # Because of some broken stacks or device driver
-      $self->_fixWithIpLen if $self->isFrameIpv4;
+      last if $self->l2->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->l2->encapsulate;
 
-      last if $self->l3->encapsulate eq NETPKT_LAYER_NONE;
-      $nextLayer = NETPKT_LAYER. $self->l3->encapsulate;
+      $self->l3($nextLayer->new(raw => $l2->payload))
+         or return undef;
 
-      $self->l4($nextLayer->new(raw => $self->l3->payload));
+      if ($self->l3->encapsulate eq NP_LAYER_UNKNOWN) {
+         warn("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
+         last;
+      }
 
-      # Here, no check; it is just raw layer 7 application data
-      last if $self->l4->encapsulate eq NETPKT_LAYER_NONE;
-      $nextLayer = NETPKT_LAYER. $self->l4->encapsulate;
+      $self->_fixWithIpLen  if $self->isIpv4;
+      $self->_getArpPadding if $self->isArp;
 
-      $self->l7($nextLayer->new(raw => $self->l4->payload));
+      last if $self->l3->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->l3->encapsulate;
+
+      $self->l4($nextLayer->new(raw => $self->l3->payload))
+         or return undef;
+
+      last if $self->l4->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->l4->encapsulate;
+
+      $self->l7($nextLayer->new(raw => $self->l4->payload))
+         or return undef;
 
       last;
    }
 
-   $self->rawLength(length $self->raw);
-
-   return $self;
+   $self;
 }
 
-sub _encodeToNetwork {
+sub pack {
    my $self = shift;
 
-   # They all have info about other layers, to do their work
+   # They all need info about other layers, to do their work
    if ($self->l2) {
-      $self->l2->computeLengths(undef, $self->l3, $self->l4, $self->l7);
-      $self->l2->computeChecksums(undef, $self->l3, $self->l4, $self->l7);
-      $self->l2->pack;
+      $self->l2->computeLengths($self)   or return undef;
+      $self->l2->computeChecksums($self) or return undef;
+      $self->l2->pack                    or return undef;
    }
-
    if ($self->l3) {
-      $self->l3->computeLengths($self->l2, undef, $self->l4, $self->l7);
-      $self->l3->computeChecksums($self->l2, undef, $self->l4, $self->l7);
-      $self->l3->pack;
+      $self->l3->computeLengths($self)   or return undef;
+      $self->l3->computeChecksums($self) or return undef;
+      $self->l3->pack                    or return undef;
    }
-
    if ($self->l4) {
-      $self->l4->computeLengths($self->l2, $self->l3, undef, $self->l7);
-      $self->l4->computeChecksums($self->l2, $self->l3, undef, $self->l7);
-      $self->l4->pack;
+      $self->l4->computeLengths($self)   or return undef;
+      $self->l4->computeChecksums($self) or return undef;
+      $self->l4->pack                    or return undef;
    }
-
    if ($self->l7) {
-      $self->l7->computeLengths($self->l2, $self->l3, $self->l4, undef);
-      $self->l7->computeChecksums($self->l2, $self->l3, $self->l4, undef);
-      $self->l7->pack;
+      $self->l7->computeLengths($self)   or return undef;
+      $self->l7->computeChecksums($self) or return undef;
+      $self->l7->pack                    or return undef;
    }
 
    my $raw;
@@ -214,321 +243,354 @@ sub _encodeToNetwork {
    $raw .= $self->l3->raw if $self->l3;
    $raw .= $self->l4->raw if $self->l4;
    $raw .= $self->l7->raw if $self->l7;
-   $self->raw($raw) if $raw;
 
-   $self->raw
-      ? $self->rawLength(length $raw)
-      : $self->rawLength(0);
+   if ($raw) {
+      $self->raw($raw);
 
-   return $self;
+      # Pad this frame, this we send at layer 2
+      if ($self->env->desc->isDescL2) {
+         my $rawLength = length($raw);
+         if ($rawLength < 60) {
+            $self->padding("G" x (60 - $rawLength));
+            $self->raw($self->raw. $self->padding);
+         }
+      }
+   }
+
+   $self;
 }
 
 # Will wipe out the trailing memory disclosure found in the packet
+# and put it into padding instance data
 sub _fixWithIpLen {
-   my $self = shift;
-   my $truncated =
-      substr($self->l3->payload, 0, $self->l3->len - $self->l3->headerLength);
+   my $self   = shift;
+   my $oldLen = length($self->l3->payload);
+
+   my $truncated = substr($self->l3->payload, 0, $self->l3->getPayloadLength);
+   my $truncLen  = length($truncated);
+   my $padding   = substr($self->l3->payload, $truncLen, $oldLen - $truncLen);
+
    $self->l3->payload($truncated);
+   $self->padding($padding);
+}
+
+# Same as previous, but ARP version
+sub _getArpPadding {
+   my $self = shift;
+
+   if (length($self->raw) > 42) {
+      $self->padding(substr($self->raw, 42, length($self->raw) - 42));
+   }
 }
 
 sub send {
    my $self = shift;
 
-   croak("@{[(caller(0))[3]]}: \$Net::Packet::Desc variable not set")
-      unless $Net::Packet::Desc;
+   my $env = $self->env;
 
-   if ($Net::Packet::Dump && ! $Net::Packet::Dump->isRunning) {
-      $Net::Packet::Dump->start;
-      $self->debugPrint("Dump object started");
+   if ($env->dump && ! $env->dump->isRunning) {
+      $env->dump->start;
+      $self->debugPrint(1, "Dump object started");
    }
 
-   if ($Net::Packet::Debug && $Net::Packet::Debug >= 3) {
-      if ($self->isFrameIpv4) {
-         $self->debugPrint(
-            "send: l3: protocol:@{[$self->l3->protocol]}, ".
-            "size:@{[$self->ipLen]}, @{[$self->ipSrc]} => @{[$self->ipDst]}"
+   if ($env->debug >= 3) {
+      if ($self->isEth) {
+         $self->debugPrint(3,
+            "send: l2: type:". sprintf("0x%x", $self->l2->type). ", ".
+            "@{[$self->l2->src]} => @{[$self->l2->dst]}"
          );
       }
-      if ($self->isFrameTcp || $self->isFrameUdp) {
-         $self->debugPrint( 
+
+      if ($self->isIp) {
+         $self->debugPrint(3,
+            "send: l3: protocol:@{[$self->l3->protocol]}, ".
+            "size:@{[$self->getLength]}, ".
+            "@{[$self->l3->src]} => @{[$self->l3->dst]}"
+         );
+      }
+      elsif ($self->isArp) {
+         $self->debugPrint(3,
+            "send: l3: @{[$self->l3->src]} => @{[$self->l3->dst]}"
+         );
+      }
+
+      if ($self->isTcp || $self->isUdp) {
+         $self->debugPrint(3,
             "send: l4: @{[$self->l4->is]}, ".
             "@{[$self->l4->src]} => @{[$self->l4->dst]}"
          );
       }
    }
 
-   $Net::Packet::Desc->send($self->raw);
+   $self->timestamp(time());
+   $env->desc->send($self->raw);
 }
+
+sub reSend { my $self = shift; $self->send unless $self->reply }
 
 sub getFilter {
    my $self = shift;
+
    my $filter;
+
+   # L4 filtering
+   if ($self->l4) {
+      if ($self->isTcp) {
+         $filter .= "(tcp and".
+                    " src port @{[$self->l4->dst]}".
+                    " and dst port @{[$self->l4->src]})";
+      }
+      elsif ($self->isUdp) {
+         $filter .= "(udp and".
+                    " src port @{[$self->l4->dst]}".
+                    " and dst port @{[$self->l4->src]})";
+      }
+      elsif ($self->isIcmpv4) {
+         $filter .= "(icmp)";
+      }
+      $filter .= " or icmp";
+   }
 
    # L3 filtering
    if ($self->l3) {
-      if ($self->isFrameIpv4) {
-         $filter .= "(src host @{[$self->ipDst]}".
-                    " and dst host @{[$self->ipSrc]})";
+      $filter .= " and " if $filter;
+
+      if ($self->isIpv4) {
+         $filter .= "(src host @{[$self->l3->dst]}".
+                    " and dst host @{[$self->l3->src]}) ".
+                    " or ".
+                    "(icmp and dst host @{[$self->l3->src]})";
       }
-      elsif ($self->isFrameArp) {
+      elsif ($self->isIpv6) {
+         $filter .= "(ip6 and src host @{[$self->l3->dst]}".
+                    " and dst host @{[$self->l3->src]})";
+      }
+      elsif ($self->isArp) {
          $filter .= "(arp)";
       }
    }
     
-   # L4 filtering
-   if ($self->l4) {
-      $filter .= " and " if $filter;
-      
-      if ($self->isFrameTcp) { 
-         $filter .= "(tcp and".
-                    " src port @{[$self->tcpDst]}".
-                    " and dst port @{[$self->tcpSrc]})";
-      }
-      elsif ($self->isFrameUdp) {
-         $filter .= "(udp and".
-                    " src port @{[$self->udpDst]}".
-                    " and dst port @{[$self->udpSrc]})".
-                    " or (icmp and dst host @{[$self->ipSrc]})";
-      }
-      elsif ($self->isFrameIcmpv4) { 
-         $filter .= "(icmp)";
-      }
-   }
-    
-   return $filter;
+   $filter;
 }
 
 sub recv {
    my $self = shift;
 
+   $self->env->dump->nextAll;
+
    # We already have the reply
    return undef if $self->reply;
 
-   croak("@{[(caller(0))[3]]}: \$Net::Packet::Dump variable not set")
-      unless $Net::Packet::Dump;
+   croak("@{[(caller(0))[3]]}: \$self->env->dump variable not set")
+      unless $self->env->dump;
 
-   # XXX: rewrite in more Perlish
-   if ($self->isFrameTcp || $self->isFrameUdp || $self->isFrameIcmpv4) {
-      $self->reply($self->l4->recv($self->l3));
+   if ($self->l4 && $self->l4->can('recv')) {
+      $self->reply($self->l4->recv($self));
    }
-   elsif ($self->isFrameArp) {
-      $self->reply($self->l3->recv);
-   }
-   elsif ($self->isFrame7) {
-      $self->reply($self->l7->recv(@_));
+   elsif ($self->l3 && $self->l3->can('recv')) {
+      $self->reply($self->l3->recv($self));
    }
    else {
-      croak("@{[(caller(0))[3]]}: not implemented for this Layer");
+      carp("@{[(caller(0))[3]]}: not implemented for this Layer");
    }
 
    $self->reply
-      ? do { $self->debugPrint("Reply received"); return $self->reply }
+      ? do { $self->debugPrint(1, "Reply received"); return $self->reply }
       : return undef;
-}
-
-#
-# Accessors
-#
-
-for my $a (@AccessorsScalar) {
-   no strict 'refs';
-   *$a = sub { shift->_AccessorScalar($a, @_) }
 }
 
 #
 # Helpers
 #
 
-sub _isFrame {
-   my ($self, $layer, $type) = @_;
-   return 0 unless defined $layer;
-   $layer && $layer->is eq $type
-      ? return 1
-      : return 0;
-}
-
-sub isFrameEth {
-   my $self = shift;
-   $self->_isFrame($self->l2, NETPKT_LAYER_ETH);
-}
-
-sub isFrameArp {
-   my $self = shift;
-   $self->_isFrame($self->l3, NETPKT_LAYER_ARP);
-}
-
-sub isFrameIpv4 {
-   my $self = shift;
-   $self->_isFrame($self->l3, NETPKT_LAYER_IPv4);
-}
-sub isFrameIp { return shift->isFrameIpv4; } # XXX: to handle IPv6
-
-sub isFrameTcp {
-   my $self = shift;
-   $self->_isFrame($self->l4, NETPKT_LAYER_TCP);
-}
-
-sub isFrameUdp {
-   my $self = shift;
-   $self->_isFrame($self->l4, NETPKT_LAYER_UDP);
-}
-
-sub isFrameIcmpv4 {
-   my $self = shift;
-   $self->_isFrame($self->l4, NETPKT_LAYER_ICMPv4);
-}
-
-sub isFrame7 {
-   my $self = shift;
-   $self->_isFrame($self->l7, NETPKT_LAYER_7);
-}
-
-#
-# L2 helpers
-#
-
-# ETH
-
-sub ethPrint { shift->l2->print }
-sub ethDump  { shift->l2->dump  }
-
-sub ethSrc  { shift->l2->src  }
-sub ethDst  { shift->l2->dst  }
-sub ethType { shift->l2->type }
-
-sub ethIsTypeIpv4 { shift->l2->isTypeIpv4 }
-sub ethIsTypeArp  { shift->l2->isTypeArp  }
-
-#
-# L3 helpers
-#
-
-# IPv4
-
-sub ipPrint { shift->l3->print }
-sub ipDump  { shift->l3->dump  }
-
-sub ipHeaderLength  { shift->l3->headerLength  }
-sub ipOptionsLength { shift->l3->optionsLength }
-
-sub ipId        { shift->l3->id       }
-sub ipHlen      { shift->l3->hlen     }
-sub ipLen       { shift->l3->len      }
-sub ipTos       { shift->l3->tos      }
-sub ipVer       { shift->l3->ver      }
-sub ipOff       { shift->l3->off      }
-sub ipChecksum  { shift->l3->checksum }
-sub ipProtocol  { shift->l3->protocol }
-sub ipSrc       { shift->l3->src      }
-sub ipDst       { shift->l3->dst      }
-sub ipTtl       { shift->l3->ttl      }
-sub ipOptions   { shift->l3->options  }
-
-sub ipHaveFlagDf { shift->l3->haveFlagDf }
-sub ipHaveFlagMf { shift->l3->haveFlagMf }
-sub ipHaveFlagRf { shift->l3->haveFlagRf }
-
-sub ipIsV4 { shift->l3->isV4 }
-
-# ARP
-
-sub arpPrint { shift->l3->print }
-sub arpDump  { shift->l3->print }
-
-sub arpHType   { shift->l3->hType   }
-sub arpPType   { shift->l3->pType   }
-sub arpHSize   { shift->l3->hSize   }
-sub arpPSize   { shift->l3->pSize   }
-sub arpOpCode  { shift->l3->opCode  }
-sub arpSrc     { shift->l3->src     }
-sub arpDst     { shift->l3->dst     }
-sub arpSrcIp   { shift->l3->srcIp   }
-sub arpDstIp   { shift->l3->dstIp   }
-sub arpPadding { shift->l3->padding }
-
-sub arpIsReply   { shift->l3->isReply   }
-sub arpIsRequest { shift->l3->isRequest }
-
-#
-# L4 helpers
-#
-
-# TCP
-
-sub tcpPrint { shift->l4->print }
-sub tcpDump  { shift->l4->dump  }
-
-sub tcpHeaderLength  { shift->l4->headerLength  }
-sub tcpOptionsLength { shift->l4->optionsLength }
-
-sub tcpSrc      { shift->l4->src      }
-sub tcpDst      { shift->l4->dst      }
-sub tcpSeq      { shift->l4->seq      }
-sub tcpAck      { shift->l4->ack      }
-sub tcpOff      { shift->l4->off      }
-sub tcpX2       { shift->l4->x2       }
-sub tcpUrp      { shift->l4->urp      }
-sub tcpChecksum { shift->l4->checksum }
-sub tcpFlags    { shift->l4->flags    }
-sub tcpWin      { shift->l4->win      }
-sub tcpOptions  { shift->l4->options  }
-
-sub tcpHaveFlagSyn { shift->l4->haveFlagSyn }
-sub tcpHaveFlagAck { shift->l4->haveFlagAck }
-sub tcpHaveFlagFin { shift->l4->haveFlagFin }
-sub tcpHaveFlagRst { shift->l4->haveFlagRst }
-sub tcpHaveFlagPsh { shift->l4->haveFlagPsh }
-sub tcpHaveFlagUrg { shift->l4->haveFlagUrg }
-sub tcpHaveFlagEce { shift->l4->haveFlagEce }
-sub tcpHaveFlagCwr { shift->l4->haveFlagCwr }
-
-# UDP
-
-sub udpPrint { shift->l4->print }
-sub udpDump  { shift->l4->dump  }
-
-sub udpHeaderLength { shift->l4->headerLength }
-sub udpTotalLength  { shift->l4->totalLength  }
-
-sub udpSrc      { shift->l4->src      }
-sub udpDst      { shift->l4->dst      }
-sub udpLen      { shift->l4->len      }
-sub udpChecksum { shift->l4->Checksum }
-
-#
-# ICMPv4
-#
-
-sub icmpPrint { shift->l4->print }
-sub icmpDump  { shift->l4->dump  }
-
-sub icmpHeaderLength { shift->l4->headerLength }
-sub icmpDataLength   { shift->l4->dataLength   }
-
-sub icmpType               { shift->l4->type               }
-sub icmpCode               { shift->l4->code               }
-sub icmpChecksum           { shift->l4->checksum           }
-sub icmpIdentifier         { shift->l4->identifier         }
-sub icmpSequenceNumber     { shift->l4->sequenceNumber     }
-sub icmpOriginateTimestamp { shift->l4->originateTimestamp }
-sub icmpReceiveTimestamp   { shift->l4->receiveTimestamp   }
-sub icmpTransmitTimestamp  { shift->l4->transmitTimestamp  }
-sub icmpData               { shift->l4->data               }
-
-#
-# L7 helpers
-#
-
-sub l7Print { shift->l7->print }
-sub l7Dump  { shift->l7->dump  }
-
-sub l7DataLength { shift->l7->dataLength }
-
-sub l7Data { shift->l7->data }
+sub _isL2 { my $self = shift; $self->l2 && $self->l2->is eq shift() }
+sub _isL3 { my $self = shift; $self->l3 && $self->l3->is eq shift() }
+sub _isL4 { my $self = shift; $self->l4 && $self->l4->is eq shift() }
+sub _isL7 { my $self = shift; $self->l7 && $self->l7->is eq shift() }
+sub isEth    { shift->_isL2(NP_LAYER_ETH)    }
+sub isRaw    { shift->_isL2(NP_LAYER_RAW)    }
+sub isNull   { shift->_isL2(NP_LAYER_NULL)   }
+sub isSll    { shift->_isL2(NP_LAYER_SLL)    }
+sub isArp    { shift->_isL3(NP_LAYER_ARP)    }
+sub isIpv4   { shift->_isL3(NP_LAYER_IPv4)   }
+sub isIpv6   { shift->_isL3(NP_LAYER_IPv6)   }
+sub isTcp    { shift->_isL4(NP_LAYER_TCP)    }
+sub isUdp    { shift->_isL4(NP_LAYER_UDP)    }
+sub isIcmpv4 { shift->_isL4(NP_LAYER_ICMPv4) }
+sub is7      { shift->_isL7(NP_LAYER_7)      }
+sub isIp     { my $self = shift; $self->isIpv4 || $self->isIpv6 }
+sub isIcmp   { my $self = shift; $self->isIcmpv4 } # XXX: || v6
 
 1;
 
 __END__
+
+=head1 NAME
+
+Net::Packet::Frame - the core of Net::Packet framework
+
+=head1 SYNOPSIS
+
+   use Net::Packet::Frame;
+
+   # Since we passed a layer 3 object, a Net::Packet::DescL3 object 
+   # will be created
+   my $frame = Net::Packet::Frame->new(
+      l3 => $ipv4,  # Net::Packet::IPv4 object
+      l4 => $tcp,   # Net::Packet::TCP object
+                    # (here, a SYN request, for example)
+   );
+
+   # Without retries
+   $frame->send;
+   sleep(3);
+   if ($frame->recv) {
+      print $frame->reply->l3, "\n";
+      print $frame->reply->l4, "\n";
+   }
+
+   # Or with retries
+   for (1..3) {
+      $frame->reSend;
+
+      until ($Env->dump->timeout) {
+         if ($frame->recv) {
+            print $frame->reply->l3, "\n";
+            print $frame->reply->l4, "\n";
+            last;
+         }
+      }
+   }
+
+=head1 DESCRIPTION
+
+In B<Net::Packet>, each sent and/or received frame is parsed and converted into a B<Net::Packet::Frame> object. Basically, it encapsulates various layers (2, 3, 4 and 7) into an object, making it easy to get or set information about it.
+
+When you create a frame object, a B<Net::Packet::Desc> object is created if none is found in the default B<$Env> object (from B<Net::Packet> module), and a B<Net::Packet::Dump> object is also created if none is found in this same B<$Env> object.
+
+Two B<new> invocation method exist, one with attributes passing, another with B<raw> attribute. This second method is usually used internally, in order to unpack received frame into all corresponding layers.
+
+=head1 ATTRIBUTES
+
+=over 4
+
+=item B<env>
+
+Stores the B<Net::Packet::Env> object. The default is to use B<$Env> from B<Net::Packet>. So, you can send/recv frames to/from different environements.
+
+=item B<raw>
+
+Pass this attribute when you want to decode a raw string captured from network. Usually used internally.
+
+=item B<padding>
+
+In Ethernet world, a frame should be at least 60 bytes in length. So when you send frames at layer 2, a padding is added in order to achieve this length, avoiding a local memory leak to network. Also, when you receive a frame from network, this attribute is filled with what have been used to pad it. This padding feature currently works for IPv4 and ARP frames.
+
+=item B<l2>
+
+Stores a layer 2 object. See B<Net::Packet> for layer 2 classes hierarchy.
+
+=item B<l3>
+
+Stores a layer 3 object. See B<Net::Packet> for layer 3 classes hierarchy.
+
+=item B<l4>
+
+Stores a layer 4 object. See B<Net::Packet> for layer 4 classes hierarchy.
+
+=item B<l7>
+
+Stores a layer 7 object. See B<Net::Packet::Layer7>.
+
+=item B<reply>
+
+When B<recv> method has been called on a frame object, and a corresponding reply has been catched, a pointer is stored in this attribute.
+
+=item B<timestamp>
+
+When a frame is packed/unpacked, the happening time is stored here.
+
+=back
+
+=head1 METHODS
+
+=over 4
+
+=item B<new>
+
+Object constructor. If a B<$Env->desc> object does not exists, one is created by analyzing attributes (so, either one of B<Net::Packet::DescL2>, B<Net::Packet::DescL3>. B<Net::Packet::DescL4> cannot be created automatically for now). The same behavious is true for B<$Env->dump> object. Default values:
+
+timestamp: time(),
+
+env:       $Env
+
+=item B<getLengthFromL7>
+
+=item B<getLengthFromL4>
+
+=item B<getLengthFromL3>
+
+=item B<getLengthFromL2>
+
+Returns the raw length in bytes from specified layer.
+
+=item B<getLength>
+
+Alias for B<getLengthFromL3>.
+
+=item B<unpack>
+
+Unpacks the raw string from network into various layers. Returns 1 on success, undef on failure.
+
+=item B<pack>
+
+Packs various layers into the raw string to send to network. Returns 1 on success, undef on failure.
+
+=item B<send>
+
+On the first send invocation in your program, the previously created B<Net::Packet::Dump> object is started (if available). That is, packet capturing is run. The B<timestamp> attribute is set to the sending time. The B<env> attribute is used to know where to send this frame.
+
+=item B<reSend>
+
+Will call B<send> method if no frame has been B<recv>'d, that is the B<reply> attribute is undef.
+
+=item B<getFilter>
+
+Will return a string which is a pcap filter, and corresponding to what you should receive compared with the frame request.
+
+=item B<recv>
+
+Searches B<framesSorted> or B<frames> from B<Net::Packet::Dump> for a matching response. If a reply has already been received (that is B<reply> attribute is already set), undef is returned. It no reply is received, return undef, else the B<Net::Packet::Frame> response.
+
+=item B<isEth>
+
+=item B<isRaw>
+
+=item B<isNull>
+
+=item B<isSll>
+
+=item B<isArp>
+
+=item B<isIpv4>
+
+=item B<isIpv6>
+
+=item B<isIp> - either IPv4 or IPv6
+
+=item B<isTcp>
+
+=item B<isUdp>
+
+=item B<isIcmpv4>
+
+=item B<isIcmp> - currently only ICMPv4
+
+=item B<is7>
+
+Returns 1 if the B<Net::Packet::Frame> is of specified layer, 0 otherwise.
+
+=back
 
 =head1 AUTHOR
 
@@ -536,7 +598,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

@@ -1,5 +1,17 @@
 Revision history for Perl extension Net::Packet.
 
+2.00 Thu Jan 27 22:12:41 CET 2005
+   - major release, backward compatibility broken
+   - full documentation
+   - a battery of tests
+   - new layers:
+     o Layer2/SLL
+     o Layer2/RAW
+     o Layer2/NULL
+     o Layer3/IPv6
+   - sending frames at DescL4 now fully works
+   - many many bugfixes
+
 1.28 Thr Dec  2 20:36:11 CEST 2004
    - bugfix: netpacket_pcap_fp: now works with libpcap 0.8
 

@@ -1,47 +1,23 @@
-Now working on:
-- IPv6
-
-Unknown (to be implemented one day - or not):
-- print pcap stats on DESTROY in debug mode
-- headerLength should be called layerLength (or length)
+Desc*.pm:
 - open Desc in safe mode (drop priv to $USER)
-- make test
-- analyzeWithFilter, useful when analyzing a pcap file generated from elsewhere
-- Desc.pm should be an IO::Handle (need to tie ?)
-- put libnetpacket.c into only a .xs :)
-- be able to send many packets to different dst
-- TCP reassembly
+
+ICMPv4:
+- TYPE_PARAMETER_PROBLEM, TYPE_SOURCE_QUENCH
+
+NEW.pm:
+- StreamTCP
+- StreamUDP
+- ICMPv6
 - IP reassembly
-- be able to connect to RA (ramon et al.)
-- be able to clone a packet, and change some fields, and reAssemble all to send
-  => see $ua->clone in LWP::UserAgent
-- IPv6, ICMPv6
-- nochecksum option
-- better handling of IP and TCP options
-- remove Net::Pcap dependance
-  => add Net::Pcap as related module when removed
+- TCP reassembly
 
-0.2x:
-- DEAD
+Dump.pm:
+- also put a pointer to outgoing frames in sortedFrames->{out}
+  => put a ->out accessor in Frame object
+  => put outgoing packets refs into a hash ? (to avoid user storing it, and
+     avoid duplicated packets into memory)
+- sort ICMPv4 differently for UDP request than TCP request
 
-1.2x:
-- ICMPv4: TYPE_PARAMETER_PROBLEM, TYPE_SOURCE_QUENCH
-- getHostName
-- getHostNames
-- handle the padding correctly (withIpLen in Frame)
-
-1.30:
-- StreamTCP.pm StreamUDP.pm Stream.pm
-- Simple made hping-like
-- endianness test:
-  $is_big_endian    = unpack("h*", pack("s", 1)) =~ /01/;
-  $is_little_endian = unpack("h*", pack("s", 1)) =~ /^1/;
-
-1.40:
-- performances: change all occurances of ->accessor to ->{accessor} (use fields or "Pseudohashes")
-- performances: perldoc Benchmark
-- performances: use fields; ($pseudohash = fields::phash(foo => "FOO", bar => "BAR");)
-- performances: perldoc -q faster
-- performances: see file:///home/USER/ebooks/80s/books/perl2/advprog/ch08_01.htm
-  for efficient object storage
-- performances: perldoc -q memory (using substr or vec as object container)
+Env.pm:
+- make a good error handling scheme ($Env->err && $Env->errString)
+  => ETIMEOUT, E...

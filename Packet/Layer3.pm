@@ -1,16 +1,50 @@
 package Net::Packet::Layer3;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2005/01/18 22:09:23 $
+# $Revision: 1.1.1.1.4.8 $
 
 require Net::Packet::Layer;
 our @ISA = qw(Net::Packet::Layer);
 
-sub layer { Net::Packet::Frame::NETPKT_L_3() }
+use Net::Packet::Consts qw(:layer);
+
+sub layer { NP_LAYER_N_3 }
+
+sub _is    { (shift->is eq shift()) ? 1 : 0                   }
+sub isIp   { my $self = shift; $self->isIpv4 || $self->isIpv6 }
+sub isIpv4 { shift->_is(NP_LAYER_IPv4)                        }
+sub isIpv6 { shift->_is(NP_LAYER_IPv6)                        }
+sub isArp  { shift->_is(NP_LAYER_ARP)                         }
 
 1;
 
 __END__
+
+=head1 NAME
+
+Net::Packet::Layer3 - base class for all layer 3 modules
+
+=head1 DESCRIPTION
+
+This is the base class for B<Net::Packet::Layer3> subclasses.
+
+It just provides those layers with inheritable attributes and methods.
+
+=head1 METHODS
+
+=over 4
+
+=item B<isIpv4>
+
+=item B<isIpv6>
+
+=item B<isIp> - is IPv4 or IPv6
+
+=item B<isArp>
+
+Returns true if Layer3 is of specified type, false otherwise.
+
+=back
 
 =head1 AUTHOR
 
@@ -18,7 +52,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

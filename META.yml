@@ -1,12 +1,15 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Net-Packet
-version:      1.28
+version:      2.00
 version_from: Packet.pm
 installdirs:  site
 requires:
+    Class::Gomor::Hash:            0.20
     IO::Interface:                 0
+    Net::IPv6Addr:                 0
     Net::Pcap:                     0.04
+    Socket6:                       0
     Time::HiRes:                   0
 
 distribution_type: module
