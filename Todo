@@ -1,4 +1,5 @@
-For next version:
+Now working on:
+- IPv6
 
 Unknown (to be implemented one day - or not):
 - print pcap stats on DESTROY in debug mode
@@ -24,14 +25,7 @@ Unknown (to be implemented one day - or not):
 - DEAD
 
 1.2x:
-- ICMPv4 other types
-- recv using in live mode made even easier:
-  my $frame = NEW;
-  $frame->send;
-  $frame->recvLoop { # Loop or via a flag in Frame creation ?
-     until ($Net::Packet::Timeout)
-     ...
-  }
+- ICMPv4: TYPE_PARAMETER_PROBLEM, TYPE_SOURCE_QUENCH
 - getHostName
 - getHostNames
 - handle the padding correctly (withIpLen in Frame)

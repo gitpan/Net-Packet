@@ -1,6 +1,20 @@
 use ExtUtils::MakeMaker;
 
-WriteMakefile (
+require DynaLoader;
+
+my $file = DynaLoader::dl_findfile('-lpcap')
+   or die "*** Cannot find libpcap, try setting LD_LIBRARY_PATH\n";
+
+my ($lib) = $file =~ /^(.*)\//;
+(my $inc  = $lib) =~ s/lib/include/;
+$inc = "-I$inc -I$inc/pcap";
+$lib = "-L$lib";
+
+print "Found libpcap:    [$file]\n";
+print "Will use lib:     [$lib]\n";
+print "Will use include: [$inc]\n";
+
+WriteMakefile(
    NAME          => 'Net::Packet',
    VERSION_FROM  => 'Packet.pm',
    PREREQ_PM     => {
@@ -10,8 +24,8 @@ WriteMakefile (
    },
    ABSTRACT_FROM => 'Packet.pm',
    AUTHOR        => 'GomoR <netpkt@gomor.org>',
-   LIBS          => ['-lpcap'],                # e.g., '-lm'
-   DEFINE        => '',                        # e.g., '-DHAVE_SOMETHING'
-   INC           => '-I. -I/usr/include/pcap', # e.g., '-I/usr/local/include'
+   LIBS          => [ "$lib -lpcap" ],
+   DEFINE        => '',
+   INC           => "-I. $inc",
    OBJECT        => '$(O_FILES)',
 );

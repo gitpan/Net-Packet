@@ -1,7 +1,7 @@
 package Net::Packet::UDP;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:31:36 $
+# $Revision: 1.1.1.1.2.2 $
 
 use strict;
 use warnings;
@@ -14,7 +14,8 @@ our @EXPORT_OK = qw(
    NETPKT_UDP_HDR_LEN
 );
 
-use Socket;
+use Socket; # inet_*
+use Net::Packet qw(inetChecksum);
 
 use constant NETPKT_UDP_HDR_LEN => 8;
 
@@ -58,6 +59,11 @@ sub recv {
          &&  $_->l3->dst eq $src
          &&  $_->l4->src == $dport
          &&  $_->l4->dst == $sport) {
+            return $_;
+         }
+      }
+      if ($_->isFrameIcmpv4) {
+         if ($_->l3->dst eq $src) {
             return $_;
          }
       }
@@ -132,7 +138,7 @@ sub computeChecksums {
          $self->checksum,
       );
    $phpkt .= CORE::pack('a*', $l7->data) if $l7;
-   $self->checksum(Net::Packet->inetChecksum($phpkt));
+   $self->checksum(inetChecksum($phpkt));
 }
 
 sub encapsulate {

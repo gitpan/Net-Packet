@@ -1,7 +1,7 @@
 package Net::Packet::Frame;
 
-# $Date: 2004/09/29 20:21:34 $
-# $Revision: 1.1.1.1.2.4 $
+# $Date: 2004/10/02 12:58:59 $
+# $Revision: 1.1.1.1.2.5 $
 
 use warnings;
 use strict;
@@ -77,17 +77,17 @@ sub new {
 
    unless ($Net::Packet::Desc) {
       if ($self->l2) {
-         use Net::Packet::DescL2;
+         require Net::Packet::DescL2;
          $Net::Packet::Desc = Net::Packet::DescL2->new;
          $self->debugPrint("DescL2 object created");
       }
       elsif ($self->l3) {
-         use Net::Packet::DescL3;
+         require Net::Packet::DescL3;
          $Net::Packet::Desc = Net::Packet::DescL3->new(ipDst => $self->ipDst);
          $self->debugPrint("DescL3 object created");
       }
       elsif ($self->l4) {
-         use Net::Packet::DescL4;
+         require Net::Packet::DescL4;
          $Net::Packet::Desc = Net::Packet::DescL4->new;
          $self->debugPrint("DescL4 object created");
       }
@@ -107,16 +107,48 @@ sub new {
       : return $self->_encodeToNetwork;
 }
 
+sub _decodeFromL3 {
+   my $self = shift;
+
+   my $nextLayer;
+   while (1) {
+      # First, try IPv4
+      # XXX: try with IPv6 when it is done
+      my $l3 = Net::Packet::IPv4->new(raw => $self->raw);
+      $l3 && $l3->encapsulate
+         ? $self->l3($l3)
+         : return undef;
+
+      last if $self->l3->encapsulate eq NETPKT_LAYER_NONE;
+      $nextLayer = NETPKT_LAYER. $self->l3->encapsulate;
+
+      $self->l4($nextLayer->new(raw => $self->l3->payload));
+
+      # Here, no check; it is just raw layer 7 application data
+      last if $self->l4->encapsulate eq NETPKT_LAYER_NONE;
+      $nextLayer = NETPKT_LAYER. $self->l4->encapsulate;
+
+      $self->l7($nextLayer->new(raw => $self->l4->payload));
+   
+      last;
+   }
+
+   $self->rawLength(length $self->raw);
+
+   return $self;
+}
+
 sub _decodeFromNetwork {
    my $self = shift;
 
    my $nextLayer;
    while (1) {
       # We must begin with something to identify next layers
+      # If it fails at l2, maybe this begins at l3 (ex: in ICMP error messages)
       my $l2 = Net::Packet::ETH->new(raw => $self->raw);
       $l2->isTypeIpv4 || $l2->isTypeArp
          ? $self->l2($l2)
-         : return undef;
+         : return $self->_decodeFromL3;
 
       last if $self->l2->encapsulate eq NETPKT_LAYER_NONE;
       $nextLayer = NETPKT_LAYER. $self->l2->encapsulate;
@@ -213,13 +245,13 @@ sub send {
    if ($Net::Packet::Debug && $Net::Packet::Debug >= 3) {
       if ($self->isFrameIpv4) {
          $self->debugPrint(
-            "send: @{[$self->l3->is]}: size:@{[$self->ipLen]}  ".
-            "@{[$self->ipSrc]} => @{[$self->ipDst]}"
+            "send: l3: protocol:@{[$self->l3->protocol]}, ".
+            "size:@{[$self->ipLen]}, @{[$self->ipSrc]} => @{[$self->ipDst]}"
          );
       }
       if ($self->isFrameTcp || $self->isFrameUdp) {
          $self->debugPrint( 
-            "send: @{[$self->l4->is]}: ".
+            "send: l4: @{[$self->l4->is]}, ".
             "@{[$self->l4->src]} => @{[$self->l4->dst]}"
          );
       }
@@ -235,11 +267,11 @@ sub getFilter {
    # L3 filtering
    if ($self->l3) {
       if ($self->isFrameIpv4) {
-         $filter .= "src host @{[$self->ipDst]}".
-                    " and dst host @{[$self->ipSrc]}";
+         $filter .= "(src host @{[$self->ipDst]}".
+                    " and dst host @{[$self->ipSrc]})";
       }
       elsif ($self->isFrameArp) {
-         $filter .= "arp";
+         $filter .= "(arp)";
       }
    }
     
@@ -248,18 +280,18 @@ sub getFilter {
       $filter .= " and " if $filter;
       
       if ($self->isFrameTcp) { 
-         $filter .= "tcp and".
+         $filter .= "(tcp and".
                     " src port @{[$self->tcpDst]}".
-                    " and dst port @{[$self->tcpSrc]}";
+                    " and dst port @{[$self->tcpSrc]})";
       }
       elsif ($self->isFrameUdp) {
-         $filter .= "udp and".
+         $filter .= "(udp and".
                     " src port @{[$self->udpDst]}".
-                    " and dst port @{[$self->udpSrc]}".
-                    " or icmp";
+                    " and dst port @{[$self->udpSrc]})".
+                    " or (icmp and dst host @{[$self->ipSrc]})";
       }
       elsif ($self->isFrameIcmpv4) { 
-         $filter .= "icmp";
+         $filter .= "(icmp)";
       }
    }
     
@@ -277,19 +309,21 @@ sub recv {
 
    # XXX: rewrite in more Perlish
    if ($self->isFrameTcp || $self->isFrameUdp || $self->isFrameIcmpv4) {
-      return $self->reply($self->l4->recv($self->l3));
+      $self->reply($self->l4->recv($self->l3));
    }
    elsif ($self->isFrameArp) {
-      return $self->reply($self->l3->recv);
+      $self->reply($self->l3->recv);
    }
    elsif ($self->isFrame7) {
-      return $self->reply($self->l7->recv(@_));
+      $self->reply($self->l7->recv(@_));
    }
    else {
       croak("@{[(caller(0))[3]]}: not implemented for this Layer");
    }
 
-   return undef;
+   $self->reply
+      ? do { $self->debugPrint("Reply received"); return $self->reply }
+      : return undef;
 }
 
 #

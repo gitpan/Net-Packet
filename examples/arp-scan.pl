@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# $Date: 2004/09/29 20:21:56 $
-# $Revision: 1.1.1.1.2.2 $
+# $Date: 2004/10/03 18:32:30 $
+# $Revision: 1.1.1.1.2.3 $
 
 use strict;
 use warnings;
@@ -17,20 +17,22 @@ die "Usage: arp-scan.pl [ -d device ] [ -I srcIp ] [ -M srcMac ] [ -v ] ".
 die "Invalid C class: $opts{n}\n" unless $opts{n} =~ /^\d+\.\d+\.\d+/;
 $opts{n} =~ s/^(\d+\.\d+\.\d+).*$/$1/;
 
-$Net::Packet::Debug = 3 if $opts{v};
+use Net::Packet qw(:globals);
 
-$Net::Packet::Dev = $opts{d} if $opts{d};
-$Net::Packet::Ip  = $opts{I} if $opts{I};
-$Net::Packet::Mac = $opts{M} if $opts{M};
+$Debug = 3 if $opts{v};
 
-use Net::Packet::Simple;
+$Dev = $opts{d} if $opts{d};
+$Ip  = $opts{I} if $opts{I};
+$Mac = $opts{M} if $opts{M};
+
+require Net::Packet::Simple;
 
 my @frames;
 for (1..254) {
    my $frame = Net::Packet::Simple->arpRequest(
       whoHas  => "$opts{n}.$_",
-      tell    => $Net::Packet::Ip,
-      tellMac => $Net::Packet::Mac,
+      tell    => $Ip,
+      tellMac => $Mac,
       toMac   => 'broadcast',
    );
    push @frames, $frame;
@@ -42,7 +44,7 @@ for (1..$times) {
 
    sleep($opts{t} ? $opts{t} : 3);
 
-   $Net::Packet::Dump->analyze;
+   $Dump->analyze;
 
    for (@frames) {
       if ($_->recv) {

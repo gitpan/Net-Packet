@@ -1,7 +1,7 @@
 package Net::Packet::ICMPv4;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:28:19 $
+# $Revision: 1.1.1.1.2.2 $
 
 use strict;
 use warnings;
@@ -12,18 +12,43 @@ require Net::Packet::Layer4;
 our @ISA = qw(Net::Packet::Layer4 Exporter);
 our @EXPORT_OK = qw( 
    NETPKT_ICMPv4_HDR_LEN
+   NETPKT_ICMPv4_CODE_ZERO
+
+   NETPKT_ICMPv4_TYPE_DESTINATION_UNREACHABLE
+   NETPKT_ICMPv4_CODE_NETWORK
+   NETPKT_ICMPv4_CODE_HOST
+   NETPKT_ICMPv4_CODE_PROTOCOL
+   NETPKT_ICMPv4_CODE_PORT
+   NETPKT_ICMPv4_CODE_FRAGMENTATION_NEEDED
+   NETPKT_ICMPv4_CODE_SOURCE_ROUTE_FAILED
+
+   NETPKT_ICMPv4_TYPE_REDIRECT
+   NETPKT_ICMPv4_CODE_FOR_NETWORK
+   NETPKT_ICMPv4_CODE_FOR_HOST
+   NETPKT_ICMPv4_CODE_FOR_TOS_AND_NETWORK
+   NETPKT_ICMPv4_CODE_FOR_TOS_AND_HOST
+
+   NETPKT_ICMPv4_TYPE_TIME_EXCEEDED
+   NETPKT_ICMPv4_CODE_TTL_IN_TRANSIT
+   NETPKT_ICMPv4_CODE_FRAGMENT_REASSEMBLY
+
    NETPKT_ICMPv4_TYPE_ECHO_REQUEST
    NETPKT_ICMPv4_TYPE_ECHO_REPLY
+
    NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST
    NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY
+
    NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST
    NETPKT_ICMPv4_TYPE_INFORMATION_REPLY
+
    NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST
    NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY
-   NETPKT_ICMPv4_CODE_ZERO
 );
 
-use Socket;
+use Socket; # inet_*
+use Net::Packet qw(getRandom16bitsInt getRandom32bitsInt inetChecksum getHostIpv4Addr);
+require Net::Packet::IPv4;
+require Net::Packet::Frame;
 
 use constant NETPKT_ICMPv4_HDR_LEN => 8;
 
@@ -74,6 +99,9 @@ our @AccessorsScalar = qw(
    receiveTimestamp
    transmitTimestamp
    addressMask
+   gateway
+   unused
+   error
    data
    headerLength
    dataLength
@@ -84,17 +112,24 @@ sub new {
       type               => 0,
       code               => 0,
       checksum           => 0,
-      identifier         => Net::Packet->getRandom16bitsInt,
-      sequenceNumber     => Net::Packet->getRandom16bitsInt,
-      originateTimestamp => Net::Packet->getRandom32bitsInt,
+      identifier         => getRandom16bitsInt(),
+      sequenceNumber     => getRandom16bitsInt(),
+      originateTimestamp => getRandom32bitsInt(),
       receiveTimestamp   => 0,
       transmitTimestamp  => 0,
       addressMask        => 0,
+      gateway            => "127.0.0.1",
+      unused             => 0,
       data               => "",
       @_,
    );
 
+   $self->gateway(getHostIpv4Addr($self->gateway));
+
    unless ($self->raw) {
+      # This line handles the packing of ICMPv4 Destination unreach IPv4 Frame
+      $self->data($self->error->raw) if $self->error;
+
       $self->_computeDataLength;
       $self->_computeHeaderLength;
    }
@@ -129,46 +164,190 @@ sub recv {
    return undef;
 }
 
-sub _packError {
-   warn("@{[(caller(0))[3]]}: unknown ICMPv4 type: @{[shift->type]}\n");
-   return undef;
+my $packTypes = {
+   NETPKT_ICMPv4_TYPE_ECHO_REQUEST()            => \&_packEcho,
+   NETPKT_ICMPv4_TYPE_ECHO_REPLY()              => \&_packEcho,
+   NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()       => \&_packTimestamp,
+   NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()         => \&_packTimestamp,
+   NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()     => \&_packInformation,
+   NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()       => \&_packInformation,
+   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST()    => \&_packAddressMask,
+   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()      => \&_packAddressMask,
+   NETPKT_ICMPv4_TYPE_DESTINATION_UNREACHABLE() => \&_packDestUnreach,
+   NETPKT_ICMPv4_TYPE_REDIRECT()                => \&_packRedirect,
+   NETPKT_ICMPv4_TYPE_TIME_EXCEEDED()           => \&_packTimeExceed,
+};
+
+my $unpackTypes = {
+   NETPKT_ICMPv4_TYPE_ECHO_REQUEST()            => \&_unpackEcho,
+   NETPKT_ICMPv4_TYPE_ECHO_REPLY()              => \&_unpackEcho,
+   NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()       => \&_unpackTimestamp,
+   NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()         => \&_unpackTimestamp,
+   NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()     => \&_unpackInformation,
+   NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()       => \&_unpackInformation,
+   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST()    => \&_unpackAddressMask,
+   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()      => \&_unpackAddressMask,
+   NETPKT_ICMPv4_TYPE_DESTINATION_UNREACHABLE() => \&_unpackDestUnreach,
+   NETPKT_ICMPv4_TYPE_REDIRECT()                => \&_unpackRedirect,
+   NETPKT_ICMPv4_TYPE_TIME_EXCEEDED()           => \&_unpackTimeExceed,
+};
+
+sub _computeHeaderLength {
+   my $self = shift;
+
+   my $hdrLengths = {
+      NETPKT_ICMPv4_TYPE_ECHO_REQUEST()            => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_ECHO_REPLY()              => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()       => 20 + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()         => 20 + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()     => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()       => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST()    => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()      => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_DESTINATION_UNREACHABLE() => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_REDIRECT()                => 8  + $self->dataLength,
+      NETPKT_ICMPv4_TYPE_TIME_EXCEEDED()           => 8  + $self->dataLength,
+   };
+
+   $self->headerLength($hdrLengths->{$self->type});
+}
+
+sub _handleType {
+   my $self = shift;
+   my ($format, $fields, $values) = @_;
+
+   if (@$values) {
+      return pack($format, @$values);
+   }
+   else {
+      my @elts = unpack($format, $self->payload);
+      my $n = 0;
+      return { map { $_ => $elts[$n++] } @$fields };
+   }
 }
 
 sub _packEcho {
    my $self = shift;
-   return pack('nn', $self->identifier, $self->sequenceNumber);
+   $self->_handleType('nn', [], [ $self->identifier, $self->sequenceNumber ]);
+}
+
+sub _unpackEcho {
+   shift->_handleType('nn a*', [ qw(identifier sequenceNumber data) ], []);
 }
 
 sub _packTimestamp {
    my $self = shift;
-   return pack('nnNNN',
-      $self->identifier,
-      $self->sequenceNumber,
-      $self->originateTimestamp,
-      $self->receiveTimestamp,
-      $self->transmitTimestamp,
+   $self->_handleType(
+      'nnNNN',
+      [],
+      [ $self->identifier, $self->sequenceNumber, $self->originateTimestamp,
+        $self->receiveTimestamp, $self->transmitTimestamp ],
    );
 }
 
-# It has same fields as ICMP echo request
-sub _packInformation { return shift->_packEcho }
+sub _unpackTimestamp {
+   shift->_handleType(
+      'nnNNN a*',
+      [ qw(identifier sequenceNumber originateTimestamp receiveTimestamp
+           transmitTimestamp data) ],
+      [],
+   );
+}
+
+# It has same fields as ICMP echo
+sub _packInformation   { shift->_packEcho   }
+sub _unpackInformation { shift->_unpackEcho }
 
 sub _packAddressMask {
    my $self = shift;
-   return
-      pack('nnN', $self->identifier, $self->sequenceNumber, $self->addressMask);
+   $self->_handleType(
+      'nnN',
+      [],
+      [ $self->identifier, $self->sequenceNumber, $self->addressMask ],
+   );
 }
 
-my $packTypes = {
-   NETPKT_ICMPv4_TYPE_ECHO_REQUEST()         => \&_packEcho,
-   NETPKT_ICMPv4_TYPE_ECHO_REPLY()           => \&_packEcho,
-   NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()    => \&_packTimestamp,
-   NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()      => \&_packTimestamp,
-   NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()  => \&_packInformation,
-   NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()    => \&_packInformation,
-   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST() => \&_packAddressMask,
-   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()   => \&_packAddressMask,
-};
+sub _unpackAddressMask {
+   shift->_handleType(
+      'nnN a*',
+      [ qw(identifier sequenceNumber addressMask data) ],
+      [],
+   );
+}
+
+# Pad ICMP error returned to achieve IP len (from IP request),
+# and put it as a Frame into error instance data
+sub _dataToFrame {
+   my $data  = shift;
+   my $ip = Net::Packet::IPv4->new(raw => $data);
+   $data .= "\x00" x $ip->len;
+   return Net::Packet::Frame->new(raw => $data);
+}
+
+sub _packDestUnreach {
+   my $self = shift;
+   $self->_handleType(
+      'N',
+      [],
+      [ $self->unused ],
+   );
+}
+
+sub _unpackDestUnreach {
+   my $href = shift->_handleType(
+      'N a*',
+      [ qw(unused data) ],
+      [],
+   );
+   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   return $href;
+}
+
+sub _packRedirect {
+   my $self = shift;
+   $self->_handleType(
+      'a4',
+      [],
+      [ inet_aton($self->gateway) ],
+   );
+}
+
+sub _unpackRedirect {
+   my $href = shift->_handleType(
+      'a4 a*',
+      [ qw(gateway data) ],
+      [],
+   );
+   $href->{gateway} = inet_ntoa($href->{gateway});
+   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   return $href;
+}
+
+sub _packTimeExceed {
+   my $self = shift;
+   $self->_handleType(
+      'N',
+      [],
+      [ $self->unused ],
+   );
+}
+
+sub _unpackTimeExceed {
+   my $href = shift->_handleType(
+      'N a*',
+      [ qw(unused data) ],
+      [],
+   );
+   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   return $href;
+}
+
+sub _decodeError {
+   my $self = shift;
+   warn("@{[(caller(0))[3]]}: unknown ICMPv4: ".
+        "type: @{[$self->type]}, code: @{[$self->code]}\n");
+   return undef;
+}
 
 sub pack {
    my $self = shift;
@@ -181,7 +360,7 @@ sub pack {
       ),
    );
 
-   my $sub = $packTypes->{$self->type} || \&_packError;
+   my $sub = $packTypes->{$self->type} || \&_decodeError;
    my $raw = $self->$sub;
    $raw   .= pack('a*', $self->data) if $self->data;
 
@@ -189,59 +368,6 @@ sub pack {
    $self->rawLength(length $self->raw);
 
    $self->computeLengths;
-}
-
-my $unpackTypes = {
-   NETPKT_ICMPv4_TYPE_ECHO_REQUEST()         => \&_unpackEcho,
-   NETPKT_ICMPv4_TYPE_ECHO_REPLY()           => \&_unpackEcho,
-   NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()    => \&_unpackTimestamp,
-   NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()      => \&_unpackTimestamp,
-   NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()  => \&_unpackInformation,
-   NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()    => \&_unpackInformation,
-   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST() => \&_unpackAddressMask,
-   NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()   => \&_unpackAddressMask,
-};
-
-sub _unpackError {
-   warn("@{[(caller(0))[3]]}: unknown ICMPv4 type: @{[shift->type]}\n");
-   return undef;
-}
-
-sub _unpackEcho {
-   my $self = shift;
-   my ($id, $seq, $data) = unpack('nn a*', $self->payload);
-   return {
-      identifier     => $id,
-      sequenceNumber => $seq,
-      data           => $data,
-   };
-}
-
-sub _unpackTimestamp {
-   my $self = shift;
-   my ($id, $seq, $orig, $recv, $trans, $data) =
-      unpack('nnNNN a*', $self->payload);
-   return {
-      identifier         => $id,
-      sequenceNumber     => $seq,
-      originateTimestamp => $orig,
-      receiveTimestamp   => $recv,
-      transmitTimestamp  => $trans,
-      data               => $data,
-   };
-}
-
-sub _unpackInformation { return shift->_unpackEcho }
-
-sub _unpackAddressMask {
-   my $self = shift;
-   my ($id, $seq, $mask, $data) = unpack('nnN a*', $self->payload);
-   return {
-      identifier     => $id,
-      sequenceNumber => $seq,
-      addressMask    => $mask,
-      data           => $data,
-   };
 }
 
 sub unpack {
@@ -255,7 +381,7 @@ sub unpack {
    $self->payload($payload);
 
    # unpack specific ICMPv4 types
-   my $sub = $unpackTypes->{$self->type} || \&_unpackError;
+   my $sub = $unpackTypes->{$self->type} || \&_decodeError;
    my $href = $self->$sub;
    $self->$_($href->{$_}) for keys %$href;
 
@@ -273,23 +399,6 @@ sub _computeDataLength {
       : $self->dataLength(0);
 }
 
-sub _computeHeaderLength {
-   my $self = shift;
-
-   my $hdrLengths = {
-      NETPKT_ICMPv4_TYPE_ECHO_REQUEST()         => 8  + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_ECHO_REPLY()           => 8  + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST()    => 20 + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY()      => 20 + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST()  => 8  + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_INFORMATION_REPLY()    => 8  + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST() => 8  + $self->dataLength,
-      NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY()   => 8  + $self->dataLength,
-   };
-
-   $self->headerLength($hdrLengths->{$self->type});
-}
-
 sub computeLengths {
    my $self = shift;
    $self->_computeDataLength;
@@ -299,18 +408,17 @@ sub computeLengths {
 sub computeChecksums {
    my $self = shift;
 
-   my $sub = $packTypes->{$self->type} || \&_packError;
+   my $sub = $packTypes->{$self->type} || \&_decodeError;
    my $raw = $self->$sub;
    $raw   .= CORE::pack('a*', $self->data) if $self->data;
 
    $self->checksum(
-      Net::Packet->inetChecksum(
+      inetChecksum(
          CORE::pack('CCn', $self->type, $self->code, 0). $raw
       ),
    );
 }
 
-# XXX: maybe ICMP can be made to encap IPv4
 sub encapsulate { Net::Packet::Frame::NETPKT_LAYER_NONE() }
 
 sub print {
@@ -325,10 +433,11 @@ sub print {
          $self->checksum,
          $self->headerLength,
    ;
-   printf "$l: $i: dataLength:%d  data:%s\n",
-      $self->dataLength,
-      CORE::unpack('H*', $self->data),
-         if $self->data
+   printf
+      "$l: $i: dataLength:%d  data:%s\n",
+         $self->dataLength,
+         CORE::unpack('H*', $self->data)
+            if $self->data
    ;
 }
 
@@ -345,15 +454,30 @@ for my $a (@AccessorsScalar) {
 # Helpers
 #
 
-sub _isType                  { shift->type == shift() ? 1 : 0 }
-sub isTypeEchoRequest        { shift->_isType(NETPKT_ICMPv4_TYPE_ECHO_REQUEST) }
-sub isTypeEchoReply          { shift->_isType(NETPKT_ICMPv4_TYPE_ECHO_REPLY)   }
-sub isTypeTimestampRequest   { shift->_isType(NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST)    }
-sub isTypeTimestampReply     { shift->_isType(NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY)      }
-sub isTypeInformationRequest { shift->_isType(NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST)  }
-sub isTypeInformationReply   { shift->_isType(NETPKT_ICMPv4_TYPE_INFORMATION_REPLY)    }
-sub isTypeAddressMaskRequest { shift->_isType(NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST) }
-sub isTypeAddressMaskReply   { shift->_isType(NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY)   }
+sub _isType                { shift->type == shift() ? 1 : 0                  }
+sub isTypeEchoRequest      { shift->_isType(NETPKT_ICMPv4_TYPE_ECHO_REQUEST) }
+sub isTypeEchoReply        { shift->_isType(NETPKT_ICMPv4_TYPE_ECHO_REPLY)   }
+sub isTypeTimestampRequest {
+   shift->_isType(NETPKT_ICMPv4_TYPE_TIMESTAMP_REQUEST);
+}
+sub isTypeTimestampReply {
+   shift->_isType(NETPKT_ICMPv4_TYPE_TIMESTAMP_REPLY);
+}
+sub isTypeInformationRequest {
+   shift->_isType(NETPKT_ICMPv4_TYPE_INFORMATION_REQUEST);
+}
+sub isTypeInformationReply {
+   shift->_isType(NETPKT_ICMPv4_TYPE_INFORMATION_REPLY);
+}
+sub isTypeAddressMaskRequest {
+   shift->_isType(NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REQUEST);
+}
+sub isTypeAddressMaskReply {
+   shift->_isType(NETPKT_ICMPv4_TYPE_ADDRESS_MASK_REPLY);
+}
+sub isTypeDestinationUnreachable {
+   shift->_isType(NETPKT_ICMPv4_TYPE_DESTINATION_UNREACHABLE);
+}
 
 1;
 

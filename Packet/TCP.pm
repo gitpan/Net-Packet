@@ -1,7 +1,7 @@
 package Net::Packet::TCP;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:31:36 $
+# $Revision: 1.1.1.1.2.1 $
 
 use strict;
 use warnings;
@@ -22,7 +22,8 @@ our @EXPORT_OK = qw(
    NETPKT_TCP_FLAG_CWR
 );
 
-use Socket;
+use Socket; # inet_*
+use Net::Packet qw(inetChecksum);
 
 use constant NETPKT_TCP_HDR_LEN  => 20;
 use constant NETPKT_TCP_FLAG_FIN => 0x01;
@@ -202,7 +203,7 @@ sub computeChecksums {
       );
    $phpkt .= CORE::pack('a*', $self->options) if $self->options;
    $phpkt .= CORE::pack('a*', $l7->data) if $l7;
-   $self->checksum(Net::Packet->inetChecksum($phpkt));
+   $self->checksum(inetChecksum($phpkt));
 }
 
 sub encapsulate {

@@ -1,7 +1,7 @@
 package Net::Packet::ARP;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:29:48 $
+# $Revision: 1.1.1.1.2.1 $
 
 # ARP: STD0037/RFC0826
 
@@ -22,7 +22,8 @@ our @EXPORT_OK = qw(
    NETPKT_ARP_ADDR_BROADCAST
 );
 
-use Socket;
+use Socket; # inet_*
+use Net::Packet qw(getHostIpv4Addr autoIp autoMac convertMac);
 
 use constant NETPKT_ARP_HTYPE_ETH      => 0x0001;
 use constant NETPKT_ARP_PTYPE_IPv4     => 0x0800;
@@ -52,13 +53,16 @@ sub new {
       hSize   => NETPKT_ARP_HSIZE_ETH,
       pSize   => NETPKT_ARP_PSIZE_IPv4,
       opCode  => NETPKT_ARP_OPCODE_REQUEST,
-      src     => Net::Packet->autoMac,
+      src     => autoMac(),
       dst     => NETPKT_ARP_ADDR_BROADCAST,
-      srcIp   => Net::Packet->autoIp,
+      srcIp   => autoIp(),
       dstIp   => "127.0.0.1",
       padding => "G" x 18, # to accomplish Ethernet frame size => no memleak ;)
       @_,
    );
+
+   $self->srcIp(getHostIpv4Addr($self->srcIp));
+   $self->dstIp(getHostIpv4Addr($self->dstIp));
 
    $self->src(lc $self->src) if $self->src;
    $self->dst(lc $self->dst) if $self->dst;
@@ -105,9 +109,9 @@ sub unpack {
    $self->hSize($hSize);
    $self->pSize($pSize);
    $self->opCode($opCode);
-   $self->src(Net::Packet->convertMac($srcMac));
+   $self->src(convertMac($srcMac));
    $self->srcIp(inet_ntoa($srcIp));
-   $self->dst(Net::Packet->convertMac($dstMac));
+   $self->dst(convertMac($dstMac));
    $self->dstIp(inet_ntoa($dstIp));
    $self->padding($padding);
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# $Date: 2004/09/29 17:46:23 $
-# $Revision: 1.1.1.1.2.1 $
+# $Date: 2004/10/03 18:32:30 $
+# $Revision: 1.1.1.1.2.2 $
 
 use strict;
 use warnings;
@@ -23,14 +23,14 @@ die "Usage: sniffer.pl [ -f filter ] [ -d device ] [ -v ] [ -3 ] [ -4 ] ".
     ""
    if $opts{h};
 
-$Net::Packet::Debug   = 3        if     $opts{v};
-$Net::Packet::Dev     = $opts{d} if     $opts{d};
-$Net::Packet::Promisc = 1        if     $opts{p};
-$opts{f}              = ""       unless $opts{f};
+use Net::Packet qw(:globals);
 
-use Net::Packet::Dump;
-use Net::Packet::Frame;
+$Debug   = 3        if     $opts{v};
+$Dev     = $opts{d} if     $opts{d};
+$Promisc = 1        if     $opts{p};
+$opts{f} = ""       unless $opts{f};
 
+require Net::Packet::Dump;
 my $dump = Net::Packet::Dump->new(
    filter          => $opts{f},
    overwrite       => 1,

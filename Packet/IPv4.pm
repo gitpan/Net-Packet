@@ -1,7 +1,7 @@
 package Net::Packet::IPv4;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:31:12 $
+# $Revision: 1.1.1.1.2.1 $
 
 use strict;
 use warnings;
@@ -21,7 +21,8 @@ our @EXPORT_OK = qw(
    NETPKT_IPv4_RESERVED_FRAGMENT
 );
 
-use Socket;
+use Socket; # inet_*
+use Net::Packet qw(getHostIpv4Addr autoIp getRandom16bitsInt);
 
 use constant NETPKT_IPv4_HDR_LEN           => 20;
 use constant NETPKT_IPv4_V4                => 4;
@@ -69,18 +70,21 @@ sub new {
    my $self = shift->SUPER::new(
       ver      => 4,
       tos      => 0,
-      id       => Net::Packet->getRandom16bitsInt,
+      id       => getRandom16bitsInt(),
       len      => 0,
       hlen     => 0,
       off      => 0,
       ttl      => 128,
       protocol => NETPKT_IPv4_PROTOCOL_TCP,
       checksum => 0,
-      src      => Net::Packet->autoIp,
+      src      => autoIp(),
       dst      => "127.0.0.1",
       options  => "",
       @_,
    );
+
+   $self->src(getHostIpv4Addr($self->src));
+   $self->dst(getHostIpv4Addr($self->dst));
 
    # Compute helper lengths if packet is unpacked (and accessors are set up)
    unless ($self->raw) {

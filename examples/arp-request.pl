@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# $Date: 2004/09/29 20:21:56 $
-# $Revision: 1.1.1.1.2.2 $
+# $Date: 2004/10/03 18:32:30 $
+# $Revision: 1.1.1.1.2.3 $
 
 use strict;
 use warnings;
@@ -14,21 +14,23 @@ die "Usage: arp-request.pl -i dstIp [ -I srcIp ] [ -M srcMac ] [ -d device ] ".
     "[ -v ] [ -t timeout ]\n"
    unless $opts{i};
 
-$Net::Packet::Debug = 3 if $opts{v};
+use Net::Packet qw(:globals);
 
-$Net::Packet::Dev = $opts{d} if $opts{d};
-$Net::Packet::Ip  = $opts{I} if $opts{I};
-$Net::Packet::Mac = $opts{M} if $opts{M};
+$Debug = 3 if $opts{v};
 
-use Net::Packet::Simple;
+$Dev = $opts{d} if $opts{d};
+$Ip  = $opts{I} if $opts{I};
+$Mac = $opts{M} if $opts{M};
+
+require Net::Packet::Simple;
 my $frame = Net::Packet::Simple->arpRequest(
-   whoHas  => Net::Packet::getHostIpv4Addr($opts{i}),
-   tell    => $Net::Packet::Ip,
-   tellMac => $Net::Packet::Mac,
+   whoHas  => $opts{i},
+   tell    => $Ip,
+   tellMac => $Mac,
    toMac   => 'broadcast',
 );
 
-use Net::Packet::Dump;
+require Net::Packet::Dump;
 my $dump = Net::Packet::Dump->new(
    filter        => $frame->getFilter,
    timeoutOnNext => $opts{t} ? $opts{t} : 3,
@@ -39,7 +41,7 @@ $frame->ethPrint;
 $frame->arpPrint;
 $frame->send;
 
-until ($Net::Packet::Timeout) {
+until ($Timeout) {
    if ($dump->next && $frame->recv) {
       print "\nReply:\n";
       $frame->reply->ethPrint;

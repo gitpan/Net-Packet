@@ -5,7 +5,7 @@ NetBSD  1.6.2
 Linux 2.4 (Red Hat 7.2 with RPM updates)
 Linux 2.6 (Debian)
 
-Net::Packet version 1.26
+Net::Packet version 1.27
 ====================
 
 This module is a unified framework to craft, send and receive packets at layers 
@@ -17,6 +17,8 @@ Net::Packet::TCP for layer 4 ; for example), and pack all of this into a
 Net::Packet::Frame object. Then, you can write it to the network, and use 
 Net::Packet::Dump to receive responses.
 
+If you want some layer 2, 3 or 4 protocol encoding/decoding to be added, just ask, and give a corresponding .pcap file ;)
+
 INSTALLATION
 
 To install this module type the following:
@@ -25,6 +27,11 @@ To install this module type the following:
    make
    make test
    make install
+
+Eventually, you will have to pass -I and -L directives for the compilation to work. This is done like that:
+
+   perl Makefile.PL INC="-I/somewhere/far/pcap/include" \
+      LIBS="-L/somewhere/far/pcap/lib -lpcap"
 
 DEPENDENCIES
 

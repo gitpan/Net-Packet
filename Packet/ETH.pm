@@ -1,7 +1,7 @@
 package Net::Packet::ETH;
 
-# $Date: 2004/09/29 16:42:48 $
-# $Revision: 1.1.1.1 $
+# $Date: 2004/10/03 18:30:37 $
+# $Revision: 1.1.1.1.2.1 $
 
 use strict;
 use warnings;
@@ -16,8 +16,11 @@ our @EXPORT_OK = qw(
    NETPKT_ETH_TYPE_ARP
 );
 
+use Net::Packet qw(convertMac);
+
 use constant NETPKT_ETH_ADDR_BROADCAST => 'ff:ff:ff:ff:ff:ff';
 use constant NETPKT_ETH_TYPE_IPv4      => 0x0800;
+use constant NETPKT_ETH_TYPE_IPv6      => 0x86dd;
 use constant NETPKT_ETH_TYPE_ARP       => 0x0806;
 
 our @AccessorsScalar = qw(
@@ -55,8 +58,8 @@ sub unpack {
 
    my ($dst, $src, $type, $payload) = unpack('H12H12n a*', $self->raw);
 
-   $self->dst(Net::Packet->convertMac($dst));
-   $self->src(Net::Packet->convertMac($src));
+   $self->dst(convertMac($dst));
+   $self->src(convertMac($src));
 
    $self->type($type);
    $self->payload($payload);

@@ -1,5 +1,13 @@
 Revision history for Perl extension Net::Packet.
 
+1.27 Sun Oct  3 20:39:13 CEST 2004
+   - Makefile.PL searches for location of libpcap
+   - IPv4: auto resolution of names to IP addr
+   - ARP:  auto resolution of names to IP addr
+   - ICMPv4: pack/unpack Destination Unreachable messages
+   - ICMPv4: pack/unpack Redirect messages
+   - ICMPv4: pack/unpack Time Exceeded messages
+
 1.26 Wed Sep 29 23:24:57 CEST 2004
    - renaming: Net::Pkt => Net::Packet to get registered on CPAN
    - unlinkAfterAnalyze is no more
@@ -19,7 +27,7 @@ Revision history for Perl extension Net::Packet.
 0.25 Sun Sep 26 21:20:37 2004
    - bugfix: an error in method Net::Pkt::next was making a segfault, due to a 
      bad typemap in Net::Pcap (FILE * to T_IN under Perl 5.8 is bad). Resolved 
-     by created my own Net::Pcap::file sub.
+     by creating my own Net::Pcap::file sub.
 
 0.24 Sun Sep 26 15:08:11 2004
   - !!! live capture ready via next sub in Net::Pkt::Dump.

@@ -1,7 +1,7 @@
 package Net::Packet;
 
-# $Date: 2004/09/29 21:25:49 $
-# $Revision: 1.1.1.1.2.4 $
+# $Date: 2004/10/03 18:38:58 $
+# $Revision: 1.1.1.1.2.7 $
 
 require v5.6.1;
 
@@ -14,8 +14,32 @@ require DynaLoader;
 use AutoLoader;
 
 our @ISA = qw(Exporter DynaLoader);
+our @EXPORT_OK = qw(
+   &autoDev
+   &autoIp
+   &autoMac
+   &getHostIpv4Addr
+   &getHostIpv4Addrs
+   &getRandom16bitsInt
+   &getRandom32bitsInt
+   &inetChecksum
+   &convertMac
+   $Err
+   $Debug
+   $Dev
+   $Ip
+   $Mac
+   $Dump
+   $Desc
+   $Promisc
+   $Timeout
+);
+our %EXPORT_TAGS = (
+   globals => [ qw( $Err $Debug $Dev $Ip $Mac $Dump $Desc $Promisc $Timeout ) ],
+   subs    => [ qw( autoDev autoIp autoMac getHostIpv4Addr getHostIpv4Addrs getRandom16bitsInt getRandom32bitsInt inetChecksum convertMac ) ],
+);
 
-our $VERSION = '1.26';
+our $VERSION = '1.27';
 
 use Net::Pcap;
 use IO::Socket::INET;
@@ -34,9 +58,9 @@ BEGIN {
 }
 
 CHECK {
-   __PACKAGE__->autoDev;
-   __PACKAGE__->autoIp;
-   __PACKAGE__->autoMac;
+   autoDev();
+   autoIp();
+   autoMac();
 }
 
 sub AUTOLOAD {
@@ -100,8 +124,8 @@ sub autoDev {
    my $err;
    $Dev = Net::Pcap::lookupdev(\$err);
    if (defined $err) {
-      croak("@{[(caller(0))[3]]}: Net::Pcap::lookupdev: $err ; ".
-            "unable to autochoose Dev");
+      warn("@{[(caller(0))[3]]}: Net::Pcap::lookupdev: $err ; ".
+           "unable to autochoose Dev");
    }
 
    return $Dev;
@@ -111,7 +135,7 @@ sub autoIp {
    return $Ip if $Ip;
 
    $Ip = $_UdpSocket->if_addr($Dev)
-      or croak("@{[(caller(0))[3]]}: unable to autochoose IP from $Dev");
+      or warn("@{[(caller(0))[3]]}: unable to autochoose IP from $Dev");
 
    return $Ip;
 }
@@ -130,7 +154,7 @@ sub autoMac {
    # On some systems, if_hwaddr simply does not work, we try to get MAC from 
    # `ifconfig $Dev`
    unless ($Mac = $_UdpSocket->if_hwaddr($Dev) || _ifconfigGetMac()) {
-      croak("@{[(caller(0))[3]]}: unable to autochoose Mac from $Dev");
+      warn("@{[(caller(0))[3]]}: unable to autochoose Mac from $Dev");
    }
 
    return $Mac;
@@ -166,7 +190,6 @@ sub getRandom32bitsInt { return int rand 0xffffffff }
 sub getRandom16bitsInt { return int rand 0xffff }
 
 sub convertMac {
-   shift;
    my $mac = shift;
    $mac =~ s/(..)/$1:/g;
    $mac =~ s/:$//;
@@ -174,7 +197,6 @@ sub convertMac {
 }
 
 sub inetChecksum {
-   shift;
    my $phpkt = shift;
 
    $phpkt      .= "\x00" if length($phpkt) % 2;
@@ -189,7 +211,7 @@ sub inetChecksum {
 }
 
 sub debugPrint {
-   return unless $Net::Packet::Debug;
+   return unless $Debug;
 
    my ($invocant, $msg) = @_;
    (my $pm = ref($invocant) || $invocant) =~ s/^Net::Packet:://;
@@ -307,6 +329,7 @@ Basically, you forge each layer of a frame (Net::Packet::IPv4 for layer 3, Net::
 
 When you use Net::Packet for the first time in a program, three package variables are automatically set in Net::Packet module: $Net::Packet::Dev, $Net::Packet::Ip, and $Net::Packet::Mac. They are taken from the default interface on your machine, the one taken by tcpdump when not user specified. I recommand you to set the package variable $Net::Packet::Debug to 3 when you are a beginner with this module.
 
+   use Net::Packet;
    $Net::Packet::Debug = 3;
 
 Let's create your first Net::Packet::Frame. We will build a TCP packet and send it at layer 3, so we must craft Net::Packet::IPv4 and Net::Packet::TCP headers.

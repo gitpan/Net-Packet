@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# $Date: 2004/09/29 20:21:56 $
-# $Revision: 1.1.1.1.2.2 $
+# $Date: 2004/10/03 18:32:30 $
+# $Revision: 1.1.1.1.2.3 $
 
 use strict;
 use warnings;
@@ -14,15 +14,17 @@ die "Usage: arp-reply.pl  -i dstIp -a isAtMac [ -M srcMac ] [ -m dstMac ] ".
     "(or will broadcast) [ -d device ] [ -v ]\n"
    unless $opts{i} && $opts{a};
 
-$Net::Packet::Debug = 3 if $opts{v};
+use Net::Packet qw(:globals);
 
-$Net::Packet::Dev = $opts{d} if $opts{d};
-$Net::Packet::Mac = $opts{M} if $opts{M};
+$Debug = 3 if $opts{v};
 
-use Net::Packet::Simple;
+$Dev = $opts{d} if $opts{d};
+$Mac = $opts{M} if $opts{M};
+
+require Net::Packet::Simple;
 my $frame = Net::Packet::Simple->arpReply(
-   srcMac => $Net::Packet::Mac,
-   ip     => Net::Packet::getHostIpv4Addr($opts{i}),
+   srcMac => $Mac,
+   ip     => $opts{i},
    isAt   => $opts{a},
    toMac  => $opts{m} ? $opts{m} : 'broadcast',
 );

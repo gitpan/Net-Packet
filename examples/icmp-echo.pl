@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# $Date: 2004/09/29 20:21:56 $
-# $Revision: 1.1.1.1.2.2 $
+# $Date: 2004/10/03 18:32:30 $
+# $Revision: 1.1.1.1.2.3 $
 
 use strict;
 use warnings;
@@ -13,17 +13,17 @@ getopts('i:I:d:v', \%opts);
 die "Usage: icmp-echo.pl -i dstIp [ -I srcIp ] [ -d device ] [ -v ]\n"
    unless $opts{i};
 
-$Net::Packet::Debug = 3 if $opts{v};
+use Net::Packet qw(:globals);
 
-$Net::Packet::Dev = $opts{d} if $opts{d};
-$Net::Packet::Ip  = $opts{I} if $opts{I};
+$Debug = 3 if $opts{v};
 
-use Net::Packet::Frame;
+$Dev = $opts{d} if $opts{d};
+$Ip  = $opts{I} if $opts{I};
 
 use Net::Packet::IPv4 qw(/NETPKT_*/);
 my $ip = Net::Packet::IPv4->new(
    protocol => NETPKT_IPv4_PROTOCOL_ICMPv4,
-   dst      => Net::Packet::getHostIpv4Addr($opts{i}),
+   dst      => $opts{i},
 );
 
 use Net::Packet::ICMPv4 qw(/NETPKT_*/);
@@ -32,13 +32,15 @@ my $echo = Net::Packet::ICMPv4->new(
    data => "test",
 );
 
+require Net::Packet::Frame;
 my $frame = Net::Packet::Frame->new(l3 => $ip, l4 => $echo);
 
 $frame->send;
 
-until ($Net::Packet::Timeout) {
-   if ($Net::Packet::Dump->next && $frame->recv) {
+until ($Timeout) {
+   if ($Dump->next && $frame->recv) {
       print "Reply:\n";
+      $frame->reply->ipPrint;
       $frame->reply->icmpPrint;
       last;
    }
