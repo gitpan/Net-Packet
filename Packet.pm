@@ -1,7 +1,7 @@
 package Net::Packet;
 
-# $Date: 2005/02/03 22:38:40 $
-# $Revision: 1.1.2.12 $
+# $Date: 2005/02/03 23:10:26 $
+# $Revision: 1.1.2.13 $
 
 require v5.6.1;
 
@@ -17,7 +17,7 @@ our @ISA = qw(Exporter DynaLoader);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.02';
+our $VERSION = '2.03';
 
 our $Env;
 require Net::Packet::Env;

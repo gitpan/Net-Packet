@@ -29,6 +29,7 @@ Packet/SLL.pm
 Packet/TCP.pm
 Packet/UDP.pm
 Packet/Utils.pm
+Packet/VLAN.pm
 Pkt.pm
 README
 Todo

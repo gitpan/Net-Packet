@@ -1,5 +1,8 @@
 Revision history for Perl extension Net::Packet.
 
+2.03 Fri Feb  4 00:08:14 CET 2005
+   - So sorry. Forgot VLAN.pm in MANIFEST
+
 2.02 Thu Feb  3 23:36:04 CET 2005
    - NEW LAYER: VLAN/802.1Q, see Net::Packet::VLAN
    - IPv4: noFixLen and doChecksum attributes
