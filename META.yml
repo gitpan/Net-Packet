@@ -1,0 +1,13 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         Net-Packet
+version:      1.26
+version_from: Packet.pm
+installdirs:  site
+requires:
+    IO::Interface:                 0
+    Net::Pcap:                     0.04
+    Time::HiRes:                   0
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17

@@ -1,0 +1,53 @@
+For next version:
+
+Unknown (to be implemented one day - or not):
+- print pcap stats on DESTROY in debug mode
+- headerLength should be called layerLength (or length)
+- open Desc in safe mode (drop priv to $USER)
+- make test
+- analyzeWithFilter, useful when analyzing a pcap file generated from elsewhere
+- Desc.pm should be an IO::Handle (need to tie ?)
+- put libnetpacket.c into only a .xs :)
+- be able to send many packets to different dst
+- TCP reassembly
+- IP reassembly
+- be able to connect to RA (ramon et al.)
+- be able to clone a packet, and change some fields, and reAssemble all to send
+  => see $ua->clone in LWP::UserAgent
+- IPv6, ICMPv6
+- nochecksum option
+- better handling of IP and TCP options
+- remove Net::Pcap dependance
+  => add Net::Pcap as related module when removed
+
+0.2x:
+- DEAD
+
+1.2x:
+- ICMPv4 other types
+- recv using in live mode made even easier:
+  my $frame = NEW;
+  $frame->send;
+  $frame->recvLoop { # Loop or via a flag in Frame creation ?
+     until ($Net::Packet::Timeout)
+     ...
+  }
+- getHostName
+- getHostNames
+- handle the padding correctly (withIpLen in Frame)
+
+1.30:
+- StreamTCP.pm StreamUDP.pm Stream.pm
+- Simple made hping-like
+- endianness test:
+  $is_big_endian    = unpack("h*", pack("s", 1)) =~ /01/;
+  $is_little_endian = unpack("h*", pack("s", 1)) =~ /^1/;
+
+1.40:
+- performances: change all occurances of ->accessor to ->{accessor} (use fields or "Pseudohashes")
+- performances: perldoc Benchmark
+- performances: use fields; ($pseudohash = fields::phash(foo => "FOO", bar => "BAR");)
+- performances: perldoc -q faster
+- performances: see file:///home/USER/ebooks/80s/books/perl2/advprog/ch08_01.htm
+  for efficient object storage
+- performances: perldoc -q memory (using substr or vec as object container)
