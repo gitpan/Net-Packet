@@ -37,7 +37,6 @@ Packet/Layer3.pm
 Packet/Layer4.pm
 Packet/Layer7.pm
 Packet/Simple.pm
-Packet/Stream.pm
 Packet/TCP.pm
 Packet/UDP.pm
 README

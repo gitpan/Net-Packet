@@ -1,5 +1,8 @@
 Revision history for Perl extension Net::Packet.
 
+1.28 Thr Dec  2 20:36:11 CEST 2004
+   - bugfix: netpacket_pcap_fp: now works with libpcap 0.8
+
 1.27 Sun Oct  3 20:39:13 CEST 2004
    - Makefile.PL searches for location of libpcap
    - IPv4: auto resolution of names to IP addr

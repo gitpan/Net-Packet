@@ -5,7 +5,7 @@ NetBSD  1.6.2
 Linux 2.4 (Red Hat 7.2 with RPM updates)
 Linux 2.6 (Debian)
 
-Net::Packet version 1.27
+Net::Packet version 1.28
 ====================
 
 This module is a unified framework to craft, send and receive packets at layers 

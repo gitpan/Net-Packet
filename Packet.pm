@@ -1,7 +1,7 @@
 package Net::Packet;
 
-# $Date: 2004/10/03 18:38:58 $
-# $Revision: 1.1.1.1.2.7 $
+# $Date: 2004/12/02 19:40:20 $
+# $Revision: 1.1.1.1.2.7.2.1 $
 
 require v5.6.1;
 
@@ -39,7 +39,7 @@ our %EXPORT_TAGS = (
    subs    => [ qw( autoDev autoIp autoMac getHostIpv4Addr getHostIpv4Addrs getRandom16bitsInt getRandom32bitsInt inetChecksum convertMac ) ],
 );
 
-our $VERSION = '1.27';
+our $VERSION = '1.28';
 
 use Net::Pcap;
 use IO::Socket::INET;
