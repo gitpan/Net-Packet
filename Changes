@@ -1,5 +1,9 @@
 Revision history for Perl extension Net::Packet.
 
+2.02 Thu Feb  3 23:36:04 CET 2005
+   - NEW LAYER: VLAN/802.1Q, see Net::Packet::VLAN
+   - IPv4: noFixLen and doChecksum attributes
+
 2.01 Tue Feb  1 17:28:04 CET 2005
    - bugfix: added explodeIps() explodePorts() into export in Utils.pm
    - bugfix: flush() in Dump.pm

@@ -2,7 +2,7 @@ Tested ok against (only x86 architectures supported for now):
 FreeBSD 5.3 - Perl 5.8
 Linux 2.4 (Red Hat 7.2) - Perl 5.6
 
-Net::Packet version 2.01
+Net::Packet version 2.02
 ========================
 
 This module is a unified framework to craft, send and receive packets at 
@@ -50,7 +50,7 @@ This module requires these other modules and libraries:
 GETTING HELP
 
 A mailing list is available for all questions concerning Net::Packet, just 
-send a subscription request to netpacket-users@gomor.org.
+send a message to netpacket-users@gomor.org (this is a moderated list).
 
 LIMITATIONS
 

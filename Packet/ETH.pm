@@ -1,7 +1,7 @@
 package Net::Packet::ETH;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.24 $
+# $Date: 2005/02/03 22:02:59 $
+# $Revision: 1.2.2.25 $
 
 use strict;
 use warnings;
@@ -77,6 +77,7 @@ sub encapsulate {
       NP_ETH_TYPE_IPv4() => NP_LAYER_IPv4(),
       NP_ETH_TYPE_IPv6() => NP_LAYER_IPv6(),
       NP_ETH_TYPE_ARP()  => NP_LAYER_ARP(),
+      NP_ETH_TYPE_VLAN() => NP_LAYER_VLAN(),
    };
 
    $types->{shift->type} || NP_LAYER_UNKNOWN();

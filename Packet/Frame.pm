@@ -1,7 +1,7 @@
 package Net::Packet::Frame;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.47 $
+# $Date: 2005/02/03 22:02:39 $
+# $Revision: 1.2.2.48 $
 
 use warnings;
 use strict;
@@ -28,7 +28,7 @@ our $VERSION = $Net::Packet::VERSION;
 
 use Time::HiRes qw(time);
 use Net::Packet qw($Env);
-use Net::Packet::Consts qw(:dump :layer);
+use Net::Packet::Consts qw(:dump :layer :arp);
 
 our @AS = qw(
    env
@@ -120,8 +120,12 @@ sub _unpackFromL3 {
          # Then IPv6
          $l3 = Net::Packet::IPv6->new(raw => $self->raw) or return undef;
          unless ($l3->version == 6) {
-            warn("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
-            return undef;
+            # Then ARP
+            $l3 = Net::Packet::ARP->new(raw => $self->raw) or return undef;
+            unless ($l3->hType eq NP_ARP_HTYPE_ETH) {
+               warn("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
+               return undef;
+            }
          }
       }
 
@@ -250,7 +254,7 @@ sub pack {
       $self->raw($raw);
 
       # Pad this frame, this we send at layer 2
-      if ($self->env->desc->isDescL2) {
+      if ($self->l2 && $self->env->desc->isDescL2) {
          my $rawLength = length($raw);
          if ($rawLength < 60) {
             $self->padding("G" x (60 - $rawLength));

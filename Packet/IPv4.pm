@@ -1,7 +1,7 @@
 package Net::Packet::IPv4;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.31 $
+# $Date: 2005/02/03 22:02:01 $
+# $Revision: 1.2.2.32 $
 
 use strict;
 use warnings;
@@ -12,7 +12,8 @@ our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
 
 use Carp;
 use Net::Packet qw($Env);
-use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa);
+use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa
+   inetChecksum);
 use Net::Packet::Consts qw(:ipv4 :layer);
 
 our $VERSION = $Net::Packet::VERSION;
@@ -42,6 +43,8 @@ our @AS = qw(
    length
    hlen
    options
+   noFixLen
+   doChecksum
 );
 
 __PACKAGE__->buildAccessorsScalar(\@AS);      
@@ -60,6 +63,8 @@ sub new {
       src      => $Env->ip,
       dst      => "127.0.0.1",
       options  => "",
+      noFixLen   => 0,
+      doChecksum => 0,
       @_,
    );
 
@@ -85,11 +90,14 @@ sub pack {
    my $hlenVer  = ($self->hlen & 0x0f) | (($self->version << 4) & 0xf0);
    my $flags    = ($self->flags << 13) | (($self->flags >> 3) & 0x1fff);
 
+   my $len =
+      ($self->noFixLen ? _fixLenOther($self->length) : _fixLen($self->length));
+
    $self->raw(
       $self->SUPER::pack('CCa*nnCCna4a4',
          $hlenVer,
          $self->tos,
-         _fixLen($self->length),
+         $len,
          $self->id,
          $flags,
          $self->ttl,
@@ -174,6 +182,17 @@ sub computeLengths {
 
    $frame->l4->computeLengths($frame) or return undef;
    $self->_computeTotalLength($frame);
+   1;
+}
+
+sub computeChecksums {
+   my $self  = shift;
+
+   return 1 unless $self->doChecksum;
+
+   $self->pack;
+   $self->checksum(inetChecksum($self->raw));
+
    1;
 }
 
@@ -318,6 +337,14 @@ Header length in number of words, including IP options.
 =item B<options>
 
 IP options, as a hexadecimal string.
+
+=item B<noFixLen>
+
+Since the byte ordering of B<length> attribute varies from system to system, a subroutine inside this module detects which byte order to use. Sometimes, like when you build B<Net::Packet::VLAN> layers, you may have the need to avoid this. So set it to 1 in order to avoid fixing. Default is 0 (that is to fix).
+
+=item B<doChecksum>
+
+Usually the IP checksum is done by the system. But if you inject some frames into network somewhere (well, err...), this checksum could be not computed. So, you can enable it by setting this attribute to 1. Default 0, to let the system compute it.
 
 =back
 

@@ -1,7 +1,7 @@
 package Net::Packet::Layer3;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.1.1.4.9 $
+# $Date: 2005/02/03 22:38:28 $
+# $Revision: 1.1.1.1.4.10 $
 
 require Net::Packet::Layer;
 our @ISA = qw(Net::Packet::Layer);
@@ -18,6 +18,7 @@ sub isIp   { my $self = shift; $self->isIpv4 || $self->isIpv6 }
 sub isIpv4 { shift->_is(NP_LAYER_IPv4)                        }
 sub isIpv6 { shift->_is(NP_LAYER_IPv6)                        }
 sub isArp  { shift->_is(NP_LAYER_ARP)                         }
+sub isVlan { shift->_is(NP_LAYER_VLAN)                        }
 
 1;
 
@@ -44,6 +45,8 @@ It just provides those layers with inheritable attributes and methods.
 =item B<isIp> - is IPv4 or IPv6
 
 =item B<isArp>
+
+=item B<isVlan>
 
 Returns true if Layer3 is of specified type, false otherwise.
 

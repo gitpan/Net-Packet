@@ -1,7 +1,7 @@
 package Net::Packet::Consts;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.2.8 $
+# $Date: 2005/02/03 22:03:52 $
+# $Revision: 1.1.2.9 $
 
 use strict;
 use warnings;
@@ -40,6 +40,7 @@ our %EXPORT_TAGS = (
       NP_LAYER_ARP
       NP_LAYER_IPv4
       NP_LAYER_IPv6
+      NP_LAYER_VLAN
       NP_LAYER_TCP
       NP_LAYER_UDP
       NP_LAYER_ICMPv4
@@ -57,6 +58,7 @@ our %EXPORT_TAGS = (
       NP_ETH_ADDR_BROADCAST
       NP_ETH_TYPE_IPv4
       NP_ETH_TYPE_IPv6
+      NP_ETH_TYPE_VLAN
       NP_ETH_TYPE_ARP
    )],
    null => [qw(
@@ -71,6 +73,12 @@ our %EXPORT_TAGS = (
       NP_SLL_ADDRESS_TYPE_512
       NP_SLL_PROTOCOL_IPv4
       NP_SLL_PROTOCOL_IPv6
+   )],
+   vlan => [qw(
+      NP_VLAN_HDR_LEN
+      NP_VLAN_TYPE_ARP
+      NP_VLAN_TYPE_IPv4
+      NP_VLAN_TYPE_IPv6
    )],
    arp => [qw(
       NP_ARP_HDR_LEN
@@ -150,6 +158,7 @@ our @EXPORT_OK = (
    @{$EXPORT_TAGS{ipv6}},
    @{$EXPORT_TAGS{null}},
    @{$EXPORT_TAGS{sll}},
+   @{$EXPORT_TAGS{vlan}},
    @{$EXPORT_TAGS{arp}},
    @{$EXPORT_TAGS{tcp}},
    @{$EXPORT_TAGS{udp}},
@@ -180,6 +189,7 @@ use constant NP_LAYER_SLL     => 'SLL';
 use constant NP_LAYER_ARP     => 'ARP';
 use constant NP_LAYER_IPv4    => 'IPv4';
 use constant NP_LAYER_IPv6    => 'IPv6';
+use constant NP_LAYER_VLAN    => 'VLAN';
 use constant NP_LAYER_TCP     => 'TCP';
 use constant NP_LAYER_UDP     => 'UDP';
 use constant NP_LAYER_ICMPv4  => 'ICMPv4';
@@ -196,6 +206,7 @@ use constant NP_ETH_HDR_LEN        => 14;
 use constant NP_ETH_ADDR_BROADCAST => 'ff:ff:ff:ff:ff:ff';
 use constant NP_ETH_TYPE_IPv4      => 0x0800;
 use constant NP_ETH_TYPE_ARP       => 0x0806;
+use constant NP_ETH_TYPE_VLAN      => 0x8100;
 use constant NP_ETH_TYPE_IPv6      => 0x86dd;
 
 use constant NP_NULL_HDR_LEN   => 4;
@@ -208,6 +219,11 @@ use constant NP_SLL_PACKET_TYPE_UNICAST_TO_US => 0;
 use constant NP_SLL_ADDRESS_TYPE_512          => 512;
 use constant NP_SLL_PROTOCOL_IPv4             => NP_ETH_TYPE_IPv4;
 use constant NP_SLL_PROTOCOL_IPv6             => NP_ETH_TYPE_IPv6;
+
+use constant NP_VLAN_HDR_LEN   => 4;
+use constant NP_VLAN_TYPE_ARP  => NP_ETH_TYPE_ARP;
+use constant NP_VLAN_TYPE_IPv4 => NP_ETH_TYPE_IPv4;
+use constant NP_VLAN_TYPE_IPv6 => NP_ETH_TYPE_IPv6;
 
 use constant NP_ARP_HDR_LEN        => 28;
 use constant NP_ARP_HTYPE_ETH      => 0x0001;

@@ -1,15 +1,15 @@
 package Net::Pkt;
 
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.15 $
+# $Date: 2005/02/03 22:03:52 $
+# $Revision: 1.2.2.16 $
 
 require Exporter;
 our @ISA = qw(Exporter);
 
 use Net::Packet         qw($Env);
 use Net::Packet::Utils  qw(:all);
-use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :null :ipv4 :ipv6 :tcp
-   :udp :icmpv4);
+use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :vlan :null :ipv4
+   :ipv6 :tcp :udp :icmpv4);
 
 our $VERSION = $Net::Packet::VERSION;
 
@@ -24,6 +24,7 @@ require Net::Packet::Frame;
 require Net::Packet::ETH;
 require Net::Packet::IPv4;
 require Net::Packet::IPv6;
+require Net::Packet::VLAN;
 require Net::Packet::ARP;
 require Net::Packet::TCP;
 require Net::Packet::UDP;
