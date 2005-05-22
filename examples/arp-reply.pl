@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# $Date: 2005/01/18 21:41:14 $
-# $Revision: 1.2.2.4 $
+#
+# $Id: arp-reply.pl,v 1.2.2.5 2005/05/22 19:09:31 gomor Exp $
+#
 
 use strict;
 use warnings;

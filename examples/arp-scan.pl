@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# $Date: 2005/01/24 17:09:23 $
-# $Revision: 1.2.2.5 $
+#
+# $Id: arp-scan.pl,v 1.2.2.7 2005/05/22 19:07:13 gomor Exp $
+#
 
 use strict;
 use warnings;
@@ -23,6 +24,8 @@ $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};
 $Env->mac($opts{M}) if $opts{M};
 $Env->debug(3)      if $opts{v};
+
+$Env->filter("arp and dst host @{[$Env->ip]}");
 
 my @frames;
 for (1..254) {

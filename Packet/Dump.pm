@@ -1,7 +1,7 @@
+#
+# $Id: Dump.pm,v 1.2.2.35 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Dump;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.33 $
 
 use strict;
 use warnings;
@@ -13,8 +13,6 @@ our @ISA = qw(Class::Gomor::Hash);
 use Net::Packet qw($Env);
 require Net::Packet::Frame;
 use Net::Packet::Utils qw(getRandom32bitsInt getPcapLink);
-
-our $VERSION = $Net::Packet::VERSION;
 
 use Net::Pcap;
 use IO::File;

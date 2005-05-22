@@ -1,10 +1,7 @@
-# $Date: 2005/01/16 17:02:02 $
-# $Revision: 1.2.2.2 $
-
 use ExtUtils::MakeMaker;
 
 die("*** Microsoft Windows not supported\n")
-   if $^O =~ /win/i;
+   if $^O =~ /windows|win32/i;
 die("*** Big endian architectures not supported yet\n")
    if unpack("h*", pack("s", 1)) =~ /01/;
 
@@ -34,7 +31,6 @@ print "Will use include: [$inc]\n";
 WriteMakefile(
    NAME          => 'Net::Packet',
    VERSION_FROM  => 'Packet.pm',
-   PREREQ_FATAL  => 1,
    PREREQ_PM     => {
       Time::HiRes        => 0,
       IO::Interface      => 0,

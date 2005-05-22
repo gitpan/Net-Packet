@@ -1,7 +1,7 @@
+#
+# $Id: ETH.pm,v 1.2.2.28 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::ETH;
-
-# $Date: 2005/02/03 22:02:59 $
-# $Revision: 1.2.2.25 $
 
 use strict;
 use warnings;
@@ -17,8 +17,6 @@ BEGIN {
 use Net::Packet qw($Env);
 use Net::Packet::Utils qw(convertMac);
 use Net::Packet::Consts qw(:eth :layer);
-
-our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    src
@@ -100,6 +98,7 @@ sub _isType    { shift->type == shift()                           }
 sub isTypeArp  { shift->_isType(NP_ETH_TYPE_ARP)                  }
 sub isTypeIpv4 { shift->_isType(NP_ETH_TYPE_IPv4)                 }
 sub isTypeIpv6 { shift->_isType(NP_ETH_TYPE_IPv6)                 }
+sub isTypeVlan { shift->_isType(NP_ETH_TYPE_VLAN)                 }
 sub isTypeIp   { my $self = shift; $self->isIpv4 || $self->isIpv6 }
 
 1;
@@ -186,6 +185,8 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 =item B<isTypeIpv6>
 
 =item B<isTypeIp> - is type IPv4 or IPv6
+
+=item B<isTypeVlan>
 
 Helper methods. Return true is the encapsulated upper layer is of specified type, false otherwise. 
 

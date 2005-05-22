@@ -1,7 +1,7 @@
+#
+# $Id: Packet.pm,v 1.1.2.16 2005/05/22 19:23:29 gomor Exp $
+#
 package Net::Packet;
-
-# $Date: 2005/02/03 23:10:26 $
-# $Revision: 1.1.2.13 $
 
 require v5.6.1;
 
@@ -17,7 +17,7 @@ our @ISA = qw(Exporter DynaLoader);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.03';
+our $VERSION = '2.04';
 
 our $Env;
 require Net::Packet::Env;
@@ -102,6 +102,8 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      +---Net::Packet::IPv4
      |      |
      |      +---Net::Packet::IPv6
+     |      |
+     |      +---Net::Packet::VLAN
      |
      +---Net::Packet::Layer4
      |      |

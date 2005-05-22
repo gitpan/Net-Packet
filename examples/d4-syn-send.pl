@@ -1,4 +1,9 @@
 #!/usr/bin/perl
+
+#
+# $Id: d4-syn-send.pl,v 1.1.2.8 2005/05/22 19:09:31 gomor Exp $
+#
+
 use strict;
 use warnings;
 

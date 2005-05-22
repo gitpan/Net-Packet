@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# $Date: 2005/01/27 18:29:16 $
-# $Revision: 1.1.2.5 $
+#
+# $Id: syn-scan.pl,v 1.1.2.7 2005/05/22 19:41:17 gomor Exp $
+#
 
 use strict;
 use warnings;
@@ -170,12 +171,6 @@ sub scanOffline {
    printResultOffline(\@open,       'open');
    printResultOffline(\@closed,     'closed');
    printResultOffline(\@firewalled, 'firewalled');
-}
-
-sub explodePorts {
-   my @ports;
-   do { s/-/../g; push @ports, $_ for eval } for split /,/, shift();
-   @ports;
 }
 
 sub printResult {

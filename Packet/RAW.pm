@@ -1,7 +1,7 @@
+#
+# $Id: RAW.pm,v 1.1.2.14 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::RAW;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.2.12 $
 
 use strict;
 use warnings;
@@ -10,9 +10,6 @@ require Net::Packet::Layer2;
 our @ISA = qw(Net::Packet::Layer2);
 
 use Net::Packet::Consts qw(:layer);
-
-require Net::Packet;
-our $VERSION = $Net::Packet::VERSION;
 
 sub new { shift->SUPER::new }
 

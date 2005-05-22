@@ -1,7 +1,7 @@
+#
+# $Id: Utils.pm,v 1.1.2.16 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Utils;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.2.13 $
 
 use strict;
 use warnings;
@@ -9,37 +9,32 @@ use warnings;
 require Exporter;
 our @ISA = qw(Exporter);
 
-require Net::Packet;
-our $VERSION = $Net::Packet::VERSION;
-
-our %EXPORT_TAGS = (
-   all => [qw(
-      autoDev
-      autoIp
-      autoIp6
-      autoMac
-      getPcapLink
-      getHostIpv4Addr
-      getHostIpv4Addrs
-      getHostIpv6Addr
-      getRandomHighPort
-      getRandom32bitsInt
-      getRandom16bitsInt
-      convertMac
-      unpackIntFromNet
-      packIntToNet
-      inetChecksum
-      inetAton
-      inetNtoa
-      inet6Aton
-      inet6Ntoa
-      explodeIps
-      explodePorts
-   )],
+our @EXPORT_OK = qw(
+   autoDev
+   autoIp
+   autoIp6
+   autoMac
+   getPcapLink
+   getHostIpv4Addr
+   getHostIpv4Addrs
+   getHostIpv6Addr
+   getRandomHighPort
+   getRandom32bitsInt
+   getRandom16bitsInt
+   convertMac
+   unpackIntFromNet
+   packIntToNet
+   inetChecksum
+   inetAton
+   inetNtoa
+   inet6Aton
+   inet6Ntoa
+   explodeIps
+   explodePorts
 );
 
-our @EXPORT_OK = (
-   @{$EXPORT_TAGS{all}},
+our %EXPORT_TAGS = (
+   all => [ @EXPORT_OK ],
 );
 
 use Socket;

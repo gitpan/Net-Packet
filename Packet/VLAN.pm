@@ -1,7 +1,7 @@
+#
+# $Id: VLAN.pm,v 1.1.2.4 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::VLAN;
-
-# $Date: 2005/02/03 22:33:50 $
-# $Revision: 1.1.2.1 $
 
 use strict;
 use warnings;
@@ -14,8 +14,6 @@ use Net::Packet qw($Env);
 use Net::Packet::Consts qw(:vlan :layer);
 use Net::Packet::Utils  qw(packIntToNet unpackIntFromNet);
 require Net::Packet::Frame;
-
-our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    priority
@@ -169,6 +167,8 @@ Net::Packet::VLAN - 802.1Q layer 3 object
 =head1 DESCRIPTION
 
 This modules implements the encoding and decoding of the Virtual LAN/802.1Q layer.
+
+Details: http://standards.ieee.org/getieee802/802.1.html
 
 See also B<Net::Packet::Layer> and B<Net::Packet::Layer3> for other attributes and methods.
 

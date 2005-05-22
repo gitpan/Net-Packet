@@ -1,7 +1,7 @@
+#
+# $Id: Env.pm,v 1.1.2.15 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Env;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.2.13 $
 
 use strict;
 use warnings;
@@ -11,9 +11,6 @@ our @ISA = qw(Class::Gomor::Hash);
 
 use Net::Packet::Utils qw(autoDev autoMac autoIp autoIp6 getHostIpv4Addr
    getHostIpv6Addr);
-
-require Net::Packet;
-our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    dev

@@ -1,7 +1,7 @@
+#
+# $Id: Frame.pm,v 1.2.2.51 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Frame;
-
-# $Date: 2005/02/03 22:02:39 $
-# $Revision: 1.2.2.48 $
 
 use warnings;
 use strict;
@@ -23,8 +23,6 @@ require Net::Packet::Layer7;
 require Net::Packet::NULL;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
-
-our $VERSION = $Net::Packet::VERSION;
 
 use Time::HiRes qw(time);
 use Net::Packet qw($Env);
@@ -421,6 +419,7 @@ sub isSll    { shift->_isL2(NP_LAYER_SLL)    }
 sub isArp    { shift->_isL3(NP_LAYER_ARP)    }
 sub isIpv4   { shift->_isL3(NP_LAYER_IPv4)   }
 sub isIpv6   { shift->_isL3(NP_LAYER_IPv6)   }
+sub isVlan   { shift->_isL3(NP_LAYER_VLAN)   }
 sub isTcp    { shift->_isL4(NP_LAYER_TCP)    }
 sub isUdp    { shift->_isL4(NP_LAYER_UDP)    }
 sub isIcmpv4 { shift->_isL4(NP_LAYER_ICMPv4) }
@@ -584,6 +583,8 @@ Searches B<framesSorted> or B<frames> from B<Net::Packet::Dump> for a matching r
 =item B<isIpv6>
 
 =item B<isIp> - either IPv4 or IPv6
+
+=item B<isVlan>
 
 =item B<isTcp>
 

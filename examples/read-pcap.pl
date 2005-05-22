@@ -1,4 +1,9 @@
 #!/usr/bin/perl
+
+#
+# $Id: read-pcap.pl,v 1.1.2.2 2005/05/22 19:09:31 gomor Exp $
+#
+
 use strict;
 use warnings;
 

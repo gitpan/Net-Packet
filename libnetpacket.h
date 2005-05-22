@@ -1,6 +1,5 @@
 /*
- * $Date: 2005/01/25 12:15:50 $
- * $Revision: 1.1.1.1.4.2 $
+ * $Id: libnetpacket.h,v 1.1.1.1.4.3 2005/05/22 19:18:07 gomor Exp $
  *
  * AUTHOR    
  * 

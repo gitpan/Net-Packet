@@ -1,7 +1,7 @@
+#
+# $Id: IPv4.pm,v 1.2.2.35 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::IPv4;
-
-# $Date: 2005/02/03 22:02:01 $
-# $Revision: 1.2.2.32 $
 
 use strict;
 use warnings;
@@ -15,8 +15,6 @@ use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa
    inetChecksum);
 use Net::Packet::Consts qw(:ipv4 :layer);
-
-our $VERSION = $Net::Packet::VERSION;
 
 BEGIN {
    my $osname = {
@@ -379,6 +377,10 @@ src:      $Env->ip
 dst:      "127.0.0.1"
 
 options:  ""
+
+noFixLen:   0
+
+doChecksum: 0
 
 =item B<pack>
 

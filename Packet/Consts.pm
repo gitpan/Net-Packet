@@ -1,16 +1,13 @@
+#
+# $Id: Consts.pm,v 1.1.2.11 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Consts;
-
-# $Date: 2005/02/03 22:03:52 $
-# $Revision: 1.1.2.9 $
 
 use strict;
 use warnings;
 
 require Exporter;
 our @ISA = qw(Exporter);
-
-require Net::Packet;
-our $VERSION = $Net::Packet::VERSION;
 
 our %EXPORT_TAGS = (
    desc => [qw(

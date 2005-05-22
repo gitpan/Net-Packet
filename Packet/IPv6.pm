@@ -1,7 +1,7 @@
+#
+# $Id: IPv6.pm,v 1.2.2.28 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::IPv6;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.26 $
 
 use strict;
 use warnings;
@@ -15,8 +15,6 @@ use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv6Addr unpackIntFromNet packIntToNet
    inet6Aton inet6Ntoa);
 use Net::Packet::Consts qw(:ipv6 :layer);
-
-our $VERSION = $Net::Packet::VERSION;
 
 BEGIN {
    *protocol = \&nextHeader;

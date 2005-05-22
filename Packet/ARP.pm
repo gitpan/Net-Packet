@@ -1,7 +1,7 @@
+#
+# $Id: ARP.pm,v 1.2.2.33 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::ARP;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.2.2.31 $
 
 use strict;
 use warnings;
@@ -13,8 +13,6 @@ our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
 use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv4Addr convertMac inetAton inetNtoa);
 use Net::Packet::Consts qw(:arp :layer);
-
-our $VERSION = $Net::Packet::VERSION;
 
 our @AS = qw(
    hType

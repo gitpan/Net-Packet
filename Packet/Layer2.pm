@@ -1,15 +1,12 @@
+#
+# $Id: Layer2.pm,v 1.1.1.1.4.12 2005/05/22 19:47:48 gomor Exp $
+#
 package Net::Packet::Layer2;
-
-# $Date: 2005/02/01 16:29:16 $
-# $Revision: 1.1.1.1.4.10 $
 
 require Net::Packet::Layer;
 our @ISA = qw(Net::Packet::Layer);
 
 use Net::Packet::Consts qw(:layer);
-
-require Net::Packet;
-our $VERSION = $Net::Packet::VERSION;
 
 sub layer { NP_LAYER_N_2 }
 

@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# $Date: 2005/01/23 15:44:17 $
-# $Revision: 1.2.2.6 $
+#
+# $Id: icmp-timestamp.pl,v 1.2.2.7 2005/05/22 19:09:31 gomor Exp $
+#
 
 use strict;
 use warnings;

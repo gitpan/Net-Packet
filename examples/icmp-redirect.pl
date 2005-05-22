@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# $Date: 2005/01/16 12:19:11 $
-# $Revision: 1.2.2.3 $
+#
+# $Id: icmp-redirect.pl,v 1.2.2.4 2005/05/22 19:09:31 gomor Exp $
+#
 
 use strict;
 use warnings;

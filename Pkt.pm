@@ -1,7 +1,7 @@
+#
+# $Id: Pkt.pm,v 1.2.2.18 2005/05/22 19:48:36 gomor Exp $
+#
 package Net::Pkt;
-
-# $Date: 2005/02/03 22:03:52 $
-# $Revision: 1.2.2.16 $
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -10,8 +10,6 @@ use Net::Packet         qw($Env);
 use Net::Packet::Utils  qw(:all);
 use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :vlan :null :ipv4
    :ipv6 :tcp :udp :icmpv4);
-
-our $VERSION = $Net::Packet::VERSION;
 
 require Net::Packet::Env;
 require Net::Packet::Dump;
