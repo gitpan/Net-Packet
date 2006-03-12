@@ -1,5 +1,5 @@
 #
-# $Id: Layer7.pm,v 1.1.1.1.4.22 2005/05/22 19:47:48 gomor Exp $
+# $Id: Layer7.pm,v 1.1.1.1.4.24 2006/03/11 16:32:50 gomor Exp $
 #
 package Net::Packet::Layer7;
 
@@ -46,7 +46,7 @@ sub dump {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: %s\n", $self->SUPER::unpack('H*', $self->data)
+   sprintf "$l:+$i: %s", $self->SUPER::unpack('H*', $self->data)
       or return undef;
 }
 
@@ -122,7 +122,7 @@ Patrice E<lt>GomoRE<gt> Auffret
    
 =head1 COPYRIGHT AND LICENSE
    
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

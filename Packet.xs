@@ -1,5 +1,5 @@
 /*
- * $Id: Packet.xs,v 1.1.1.1.4.3 2005/05/22 19:18:07 gomor Exp $
+ * $Id: Packet.xs,v 1.1.1.1.4.4 2006/03/11 16:32:50 gomor Exp $
  *
  * AUTHOR
  *
@@ -7,7 +7,7 @@
  *
  * COPYRIGHT AND LICENSE
  *
- * Copyright (c) 2004-2005, Patrice <GomoR> Auffret
+ * Copyright (c) 2004-2006, Patrice <GomoR> Auffret
  *
  * You may distribute this module under the terms of the Artistic license.
  * See Copying file in the source distribution archive.

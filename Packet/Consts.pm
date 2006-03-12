@@ -1,5 +1,5 @@
 #
-# $Id: Consts.pm,v 1.1.2.11 2005/05/22 19:47:48 gomor Exp $
+# $Id: Consts.pm,v 1.1.2.13 2006/03/11 18:01:09 gomor Exp $
 #
 package Net::Packet::Consts;
 
@@ -236,9 +236,9 @@ use constant NP_IPv4_V4                => 4;
 use constant NP_IPv4_PROTOCOL_ICMPv4   => 1;
 use constant NP_IPv4_PROTOCOL_TCP      => 6;
 use constant NP_IPv4_PROTOCOL_UDP      => 17;
-use constant NP_IPv4_MORE_FRAGMENT     => 0x2000;
-use constant NP_IPv4_DONT_FRAGMENT     => 0x4000;
-use constant NP_IPv4_RESERVED_FRAGMENT => 0x8000;
+use constant NP_IPv4_MORE_FRAGMENT     => 1;
+use constant NP_IPv4_DONT_FRAGMENT     => 2;
+use constant NP_IPv4_RESERVED_FRAGMENT => 4;
 
 use constant NP_IPv6_HDR_LEN      => 40;
 use constant NP_IPv6_V6           => 6;
@@ -315,7 +315,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

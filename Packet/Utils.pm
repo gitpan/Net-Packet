@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.1.2.16 2005/05/22 19:47:48 gomor Exp $
+# $Id: Utils.pm,v 1.1.2.18 2006/03/11 16:32:50 gomor Exp $
 #
 package Net::Packet::Utils;
 
@@ -238,7 +238,7 @@ Net::Packet::Utils - useful subroutines used in Net::Packet
    use Net::Packet::Utils qw(explodeIps explodePorts);
 
    my @ips   = explodeIps('192.168.0.1-254,192.168.1.1');
-   my @ports = explodeIps('1-1024,6000');
+   my @ports = explodePorts('1-1024,6000');
 
    print "@ips\n";
    print "@ports\n";
@@ -341,7 +341,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

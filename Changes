@@ -1,5 +1,20 @@
 Revision history for Perl extension Net::Packet.
 
+2.05 Sun Mar 12 12:09:18 CET 2006
+   - bugfix: IPv4: flags field is now split into flags and offset fields
+   - bugfix: IPv4: constants for IPv4 flags are now ok
+   - bugfix: Env: when we are not able to autoDev(), do not bother to autofind 
+             IP and MAC addresses
+   - bugfix: VLAN: pack/unpack methods fixed (now vlanId can be greater than 16
+   - updated: IPv4: print() now also prints new offset field
+   - updated: IPv4: pod for new offset field
+   - updated: dump methods: no more new line character at the end of string
+   - type: Utils: pod documentation typo fixed
+   - new depdendance: Bit::Vector for VLAN.pm
+   - examples/ipv4-flags.pl: new example
+   - examples/vlan-craft.pl: new example
+   - examples/vlan-support.pl: new example
+
 2.04 Sun May 22 21:18:41 CEST 2005
    - examples/arp-scan.pl: bugfix in pcap filter
    - examples/sniffer.pl: new feature (dump payload as ASCII)

@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.1.2.16 2005/05/22 19:23:29 gomor Exp $
+# $Id: Packet.pm,v 1.1.2.18 2006/03/11 16:32:50 gomor Exp $
 #
 package Net::Packet;
 
@@ -17,7 +17,7 @@ our @ISA = qw(Exporter DynaLoader);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.04';
+our $VERSION = '2.05';
 
 our $Env;
 require Net::Packet::Env;
@@ -71,8 +71,6 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
 
   Net::Packet::Dump
 
-  Net::Packet::Frame
-
   Net::Packet::Utils
 
   Net::Packet::Desc
@@ -82,6 +80,8 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      +---Net::Packet::DescL3
      |
      +---Net::Packet::DescL4
+
+  Net::Packet::Frame
 
   Net::Packet::Layer
      |
@@ -161,7 +161,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

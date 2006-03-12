@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.2.2.35 2005/05/22 19:47:48 gomor Exp $
+# $Id: IPv4.pm,v 1.2.2.37 2006/03/11 18:01:32 gomor Exp $
 #
 package Net::Packet::IPv4;
 
@@ -36,6 +36,7 @@ our @AS = qw(
    protocol
    checksum
    flags
+   offset
    version
    tos
    length
@@ -55,6 +56,7 @@ sub new {
       length   => 0,
       hlen     => 0,
       flags    => 0,
+      offset   => 0,
       ttl      => 128,
       protocol => NP_IPv4_PROTOCOL_TCP,
       checksum => 0,
@@ -86,7 +88,8 @@ sub pack {
 
    # Thank you Stephanie Wehner
    my $hlenVer  = ($self->hlen & 0x0f) | (($self->version << 4) & 0xf0);
-   my $flags    = ($self->flags << 13) | (($self->flags >> 3) & 0x1fff);
+   my $flags    = $self->flags;
+   my $offset   = $self->offset;
 
    my $len =
       ($self->noFixLen ? _fixLenOther($self->length) : _fixLen($self->length));
@@ -97,7 +100,7 @@ sub pack {
          $self->tos,
          $len,
          $self->id,
-         $flags,
+         $flags << 13 | $offset,
          $self->ttl,
          $self->protocol,
          $self->checksum,
@@ -128,7 +131,8 @@ sub unpack {
    $self->tos($tos);
    $self->length($len);
    $self->id($id);
-   $self->flags($flags);
+   $self->flags($flags >> 13);
+   $self->offset($flags & 0x1FFF);
    $self->ttl($ttl);
    $self->protocol($proto);
    $self->checksum($cksum);
@@ -221,7 +225,8 @@ sub print {
    my $l = $self->layer;
    sprintf
       "$l:+$i: version:%d  id:%.4d  ttl:%d  [%s => %s]\n".
-      "$l: $i: tos:0x%.2x  flags:0x%.4x  checksum:0x%.4x  protocol:0x%.2x\n".
+      "$l: $i: tos:0x%.2x  flags:0x%.2x  offset:%d\n".
+      "$l: $i: checksum:0x%.4x  protocol:0x%.2x\n".
       "$l: $i: size:%d  length:%d  optionsLength:%d  payload:%d",
          $self->version,
          $self->id,
@@ -230,6 +235,7 @@ sub print {
          $self->dst,
          $self->tos,
          $self->flags,
+         $self->offset,
          $self->checksum,
          $self->protocol,
          $self->length,
@@ -316,6 +322,10 @@ IP checksum.
 
 IP Flags.
 
+=item B<offset>
+
+IP fragment offset.
+
 =item B<version>
 
 IP version, here it is 4.
@@ -365,6 +375,8 @@ length:   0
 hlen:     0
 
 flags:    0
+
+offset:   0
 
 ttl:      128
 
@@ -451,7 +463,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
       
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

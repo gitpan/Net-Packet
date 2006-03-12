@@ -1,5 +1,5 @@
 #
-# $Id: SLL.pm,v 1.1.2.9 2005/05/22 19:47:48 gomor Exp $
+# $Id: SLL.pm,v 1.1.2.10 2006/03/11 16:32:50 gomor Exp $
 #
 package Net::Packet::SLL;
 
@@ -225,7 +225,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.

@@ -1,8 +1,9 @@
 Tested ok against (only x86 architectures supported for now):
-FreeBSD 5.3 - Perl 5.8
-Linux 2.4 (Red Hat 7.2) - Perl 5.6
+FreeBSD 6.0 - Perl 5.8.7 - libpcap 0.9.1
+Linux 2.6.x - Perl 5.8.5 - libpcap 0.8.3 (Gentoo)
+OpenBSD 3.8 - Perl 5.8.6 - libpcap ?
 
-Net::Packet version 2.04
+Net::Packet version 2.05
 ========================
 
 This module is a unified framework to craft, send and receive packets at 
@@ -43,6 +44,7 @@ This module requires these other modules and libraries:
   Net::Pcap
   Socket6
   Time::HiRes
+  Bit::Vector
 
   C libraries:
   libpcap
@@ -69,5 +71,5 @@ COPYRIGHT AND LICENSE
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.
 
-Copyright (c) 2004-2005, Patrice <GomoR> Auffret
+Copyright (c) 2004-2006, Patrice <GomoR> Auffret
 

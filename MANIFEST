@@ -32,7 +32,6 @@ Packet/Utils.pm
 Packet/VLAN.pm
 Pkt.pm
 README
-Todo
 examples/arp-reply.pl
 examples/arp-request.pl
 examples/arp-scan.pl
@@ -45,11 +44,14 @@ examples/icmp-mask.pl
 examples/icmp-redirect.pl
 examples/icmp-timestamp.pl
 examples/ip6-syn-send.pl
+examples/ipv4-flags.pl
 examples/read-pcap.pl
 examples/sniffer.pl
 examples/syn-scan.pl
 examples/syn-send.pl
 examples/udp-send.pl
+examples/vlan-craft.pl
+examples/vlan-support.pl
 libnetpacket.c
 libnetpacket.h
 t/01-use-pkt.t

@@ -1,5 +1,5 @@
 #
-# $Id: VLAN.pm,v 1.1.2.4 2005/05/22 19:47:48 gomor Exp $
+# $Id: VLAN.pm,v 1.1.2.6 2006/03/11 19:18:48 gomor Exp $
 #
 package Net::Packet::VLAN;
 
@@ -12,7 +12,6 @@ our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
 
 use Net::Packet qw($Env);
 use Net::Packet::Consts qw(:vlan :layer);
-use Net::Packet::Utils  qw(packIntToNet unpackIntFromNet);
 require Net::Packet::Frame;
 
 our @AS = qw(
@@ -43,18 +42,20 @@ sub getLength {
    NP_VLAN_HDR_LEN;
 }
 
+require Bit::Vector;
+
 sub pack {
    my $self = shift;
 
-   my $pCfiId1 = packIntToNet($self->priority, 'C', 2,  3);
-   my $pCfiId2 = packIntToNet($self->cfi,      'C', 6,  1);
-   my $pCfiId3 = packIntToNet($self->id,       'v', 0, 12);
+   my $v3  = Bit::Vector->new_Dec(3,  $self->priority);
+   my $v1  = Bit::Vector->new_Dec(1,  $self->cfi);
+   my $v12 = Bit::Vector->new_Dec(12, $self->id);
 
-#  print STDERR "$pCfiId1 $pCfiId2 $pCfiId3\n";
+   my $v16 = $v3->Concat_List($v1, $v12);
 
    $self->raw(
-      $self->SUPER::pack('B16na*',
-         $pCfiId1. $pCfiId2. $pCfiId3,
+      $self->SUPER::pack('nna*',
+         $v16->to_Dec,
          $self->type,
          $self->frame->raw,
       ),
@@ -67,15 +68,15 @@ sub unpack {
    my $self = shift;
 
    my ($pCfiId, $type, $payload) =
-      $self->SUPER::unpack('B16n a*', $self->raw)
+      $self->SUPER::unpack('nn a*', $self->raw)
          or return undef;
 
-#  print STDERR $pCfiId, "\n";
+   my $v16 = Bit::Vector->new_Dec(16, $pCfiId);
 
-   $self->priority(unpackIntFromNet($pCfiId, 'C', 0, 5,  3));
-   $self->cfi     (unpackIntFromNet($pCfiId, 'C', 3, 7,  1));
-   $self->id      (unpackIntFromNet($pCfiId, 'n', 4, 4, 12));
-   $self->type($type);
+   $self->priority($v16->Chunk_Read(3, 13));
+   $self->cfi     ($v16->Chunk_Read(1, 12));
+   $self->id      ($v16->Chunk_Read(12, 0));
+   $self->type    ($type);
 
    $self->frame(Net::Packet::Frame->new(raw => $payload));
 
@@ -246,7 +247,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2005, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See Copying file in the source distribution archive.
