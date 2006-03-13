@@ -1,5 +1,8 @@
 Revision history for Perl extension Net::Packet.
 
+2.06 Mon Mar 13 13:53:54 CET 2006
+   - Frame: added noPadding option
+
 2.05 Sun Mar 12 12:09:18 CET 2006
    - bugfix: IPv4: flags field is now split into flags and offset fields
    - bugfix: IPv4: constants for IPv4 flags are now ok

@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.1.2.18 2006/03/11 16:32:50 gomor Exp $
+# $Id: Packet.pm,v 1.1.2.19 2006/03/13 12:56:18 gomor Exp $
 #
 package Net::Packet;
 
@@ -17,7 +17,7 @@ our @ISA = qw(Exporter DynaLoader);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.05';
+our $VERSION = '2.06';
 
 our $Env;
 require Net::Packet::Env;

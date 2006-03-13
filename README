@@ -3,7 +3,7 @@ FreeBSD 6.0 - Perl 5.8.7 - libpcap 0.9.1
 Linux 2.6.x - Perl 5.8.5 - libpcap 0.8.3 (Gentoo)
 OpenBSD 3.8 - Perl 5.8.6 - libpcap ?
 
-Net::Packet version 2.05
+Net::Packet version 2.06
 ========================
 
 This module is a unified framework to craft, send and receive packets at 

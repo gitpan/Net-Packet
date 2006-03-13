@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.2.2.52 2006/03/11 16:32:50 gomor Exp $
+# $Id: Frame.pm,v 1.2.2.53 2006/03/13 12:53:51 gomor Exp $
 #
 package Net::Packet::Frame;
 
@@ -38,6 +38,7 @@ our @AS = qw(
    l7
    reply
    timestamp
+   noPadding
 );
 
 __PACKAGE__->buildAccessorsScalar(\@AS);
@@ -46,6 +47,7 @@ sub new {
    my $self = shift->SUPER::new(
       timestamp => time(),
       env       => $Env,
+      noPadding => 0,
       @_,
    );
 
@@ -251,17 +253,23 @@ sub pack {
    if ($raw) {
       $self->raw($raw);
 
-      # Pad this frame, this we send at layer 2
-      if ($self->l2 && $self->env->desc->isDescL2) {
-         my $rawLength = length($raw);
-         if ($rawLength < 60) {
-            $self->padding("G" x (60 - $rawLength));
-            $self->raw($self->raw. $self->padding);
-         }
-      }
+      $self->_padFrame unless $self->noPadding;
    }
 
    $self;
+}
+
+sub _padFrame {
+   my $self = shift;
+
+   # Pad this frame, this we send at layer 2
+   if ($self->l2 && $self->env->desc->isDescL2) {
+      my $rawLength = length($self->raw);
+      if ($rawLength < 60) {
+         $self->padding("G" x (60 - $rawLength));
+         $self->raw($self->raw. $self->padding);
+      }
+   }
 }
 
 # Will wipe out the trailing memory disclosure found in the packet
@@ -381,7 +389,7 @@ sub getFilter {
 sub recv {
    my $self = shift;
 
-   $self->env->dump->nextAll;
+   $self->env->dump->nextAll if $self->env->dump->isRunning;
 
    # We already have the reply
    return undef if $self->reply;
@@ -515,6 +523,10 @@ When B<recv> method has been called on a frame object, and a corresponding reply
 =item B<timestamp>
 
 When a frame is packed/unpacked, the happening time is stored here.
+
+=item B<noPadding>
+
+Frames are normally automatically padded to achieve the minimum required length. Set it to 1 to avoid padding. Default is to pad the frame.
 
 =back
 
