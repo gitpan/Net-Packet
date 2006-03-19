@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.1.2.17 2006/03/11 16:32:50 gomor Exp $
+# $Id: Env.pm,v 1.1.2.19 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Env;
 
@@ -44,12 +44,14 @@ sub new {
 
    unless ($self->dev) {
       my $dev = autoDev();
-      return undef unless $dev;
-      $self->dev(autoDev());
+      $self->dev(autoDev()) if $dev;
    }
-   $self->mac(autoMac($self->dev)) unless $self->mac;
-   $self->ip(autoIp($self->dev))   unless $self->ip;
-   $self->ip6(autoIp6($self->dev)) unless $self->ip6;
+
+   if ($self->dev) {
+      $self->mac(autoMac($self->dev)) unless $self->mac;
+      $self->ip(autoIp($self->dev))   unless $self->ip;
+      $self->ip6(autoIp6($self->dev)) unless $self->ip6;
+   }
 
    $self;
 }
@@ -178,7 +180,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
       
 =head1 RELATED MODULES
          

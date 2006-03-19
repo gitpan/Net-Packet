@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.2.2.37 2006/03/11 18:01:32 gomor Exp $
+# $Id: IPv4.pm,v 1.2.2.40 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::IPv4;
 
@@ -15,18 +15,6 @@ use Net::Packet qw($Env);
 use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa
    inetChecksum);
 use Net::Packet::Consts qw(:ipv4 :layer);
-
-BEGIN {
-   my $osname = {
-      freebsd => \&_fixLenBsd,
-      netbsd  => \&_fixLenBsd,
-   };
-
-   *_fixLen = $osname->{$^O} || \&_fixLenOther;
-}
-
-sub _fixLenBsd   { pack('v', shift) }
-sub _fixLenOther { pack('n', shift) }
 
 our @AS = qw(
    id
@@ -48,7 +36,25 @@ our @AS = qw(
 
 __PACKAGE__->buildAccessorsScalar(\@AS);      
 
-sub new {
+BEGIN {
+   my $osname = {
+      freebsd => [ \&_fixLenBsd, undef, ],
+      netbsd  => [ \&_fixLenBsd, undef, ],
+      cygwin  => [ undef, \&_newWin32,  ],
+      MSWin32 => [ undef, \&_newWin32,  ],
+   };
+
+   *_fixLen = $osname->{$^O}->[0] || \&_fixLenOther;
+   *new     = $osname->{$^O}->[1] || \&_newOther;
+}
+
+sub _fixLenBsd   { pack('v', shift) }
+sub _fixLenOther { pack('n', shift) }
+
+sub _newWin32 { shift->_newCommon(doChecksum => 1, @_) }
+sub _newOther { shift->_newCommon(@_)                  }
+
+sub _newCommon {
    my $self = shift->SUPER::new(
       version  => 4,
       tos      => 0,
@@ -61,8 +67,8 @@ sub new {
       protocol => NP_IPv4_PROTOCOL_TCP,
       checksum => 0,
       src      => $Env->ip,
-      dst      => "127.0.0.1",
-      options  => "",
+      dst      => '127.0.0.1',
+      options  => '',
       noFixLen   => 0,
       doChecksum => 0,
       @_,
@@ -466,7 +472,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
       
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
  

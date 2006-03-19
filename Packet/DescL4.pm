@@ -1,63 +1,30 @@
 #
-# $Id: DescL4.pm,v 1.2.2.23 2006/03/11 16:32:50 gomor Exp $
+# $Id: DescL4.pm,v 1.2.2.26 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::DescL4;
 
 use strict;
 use warnings;
+use Carp;
 
 require Net::Packet::Desc;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Desc Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Desc);
 
-use Carp;
-use Socket;
-use Socket6;
-use IO::Socket;
 use Net::Packet::Consts qw(:desc :layer);
 use Net::Packet::Utils qw(getHostIpv4Addr getHostIpv6Addr);
 
-our @AS = qw(
-   target
-   protocol
-   family
-);
-
-__PACKAGE__->buildAccessorsScalar(\@AS);
+use Socket;
+use Socket6;
+require Net::Write::Layer4;
 
 sub new {
    my $self = shift->SUPER::new(
       protocol => NP_DESC_IPPROTO_TCP,
-      family   => NP_LAYER_IPv4,
       @_,
    );
 
-   croak("Must be EUID 0 to create a DescL4 object") if $>;
-
-   croak("@{[(caller(0))[3]]}: you must pass at least `target' parameter")
+   croak("@{[(caller(0))[3]]}: you must pass at least `target' parameter\n")
       unless $self->target;
-
-   my $families = {
-      NP_LAYER_IPv4() => AF_INET(),
-      NP_LAYER_IPv6() => AF_INET6(),
-   };
-
-   my @res = getaddrinfo(
-      $self->target, 0, $families->{$self->family}, SOCK_STREAM,
-   );
-
-   my ($family, $saddr) = @res[0, 3] if @res >= 5;
-
-   $self->_sockaddr($saddr);
-
-   socket(S, $family, SOCK_RAW, $self->protocol)
-      or croak("@{[(caller(0))[3]]}: socket: $!");
-
-   my $fd = fileno(S) or croak("@{[(caller(0))[3]]}: fileno: $!");
-
-   my $io = IO::Socket->new;
-   $io->fdopen($fd, "w") or croak("@{[(caller(0))[3]]}: fdopen: $!");
-   $self->_io($io);
 
    if ($self->isFamilyIpv4) {
       $self->target(getHostIpv4Addr($self->target));
@@ -65,6 +32,19 @@ sub new {
    elsif ($self->isFamilyIpv6) {
       $self->target(getHostIpv6Addr($self->target));
    }
+
+   my $families = {
+      NP_LAYER_IPv4() => AF_INET(),
+      NP_LAYER_IPv6() => AF_INET6(),
+   };
+
+   my $nwrite = Net::Write::Layer4->new(
+      dst      => $self->target,
+      family   => $families->{$self->family},
+      protocol => $self->protocol,
+   );
+   $nwrite->open;
+   $self->_io($nwrite);
 
    $self;
 }
@@ -166,7 +146,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 

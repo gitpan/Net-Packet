@@ -1,53 +1,30 @@
 #
-# $Id: DescL3.pm,v 1.2.2.20 2006/03/11 16:32:50 gomor Exp $
+# $Id: DescL3.pm,v 1.2.2.23 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::DescL3;
 
 use strict;
 use warnings;
+use Carp;
 
 require Net::Packet::Desc;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Desc Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Desc);
 
-use Carp;
-use Socket;
-use Socket6;
-use IO::Socket;
-use Net::Packet::Consts qw(:desc);
-
-our @AS = qw(
-   target
-);
-
-__PACKAGE__->buildAccessorsScalar(\@AS);
+require Net::Write::Layer3;
 
 sub new {
    my $self = shift->SUPER::new(@_);
 
-   croak("Must be EUID 0 to create a DescL3 object") if $>;
-
-   croak("@{[(caller(0))[3]]}: you must pass `target' parameter")
+   croak("@{[(caller(0))[3]]}: you must pass `target' parameter\n")
       unless $self->target;
 
-   my @res = getaddrinfo($self->target, 0, AF_UNSPEC, SOCK_STREAM);
-   my ($family, $saddr) = @res[0, 3] if @res >= 5;
+   my $nwrite = Net::Write::Layer3->new(
+      dev => $self->env->dev,
+      dst => $self->target,
+   );
+   $nwrite->open;
 
-   $self->_sockaddr($saddr);
-
-   socket(S, $family, SOCK_RAW, NP_DESC_IPPROTO_RAW)
-      or croak("@{[(caller(0))[3]]}: socket: $!");
-
-   if ($family == AF_INET) {
-      setsockopt(S, NP_DESC_IPPROTO_IP, NP_DESC_IP_HDRINCL, 1)
-         or croak("@{[(caller(0))[3]]}: setsockopt: $!");
-   }
-
-   my $fd = fileno(S) or croak("@{[(caller(0))[3]]}: fileno: $!");
-
-   my $io = IO::Socket->new;
-   $io->fdopen($fd, "w") or croak("@{[(caller(0))[3]]}: fdopen: $!");
-   $self->_io($io);
+   $self->_io($nwrite);
 
    $self;
 }
@@ -102,7 +79,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 

@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.2.2.36 2006/03/11 16:32:50 gomor Exp $
+# $Id: Dump.pm,v 1.2.2.41 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Dump;
 
@@ -36,8 +36,7 @@ our @AS = qw(
    _offlineMode
    _pid
    _pcapd
-   _pcapio
-   _fpos
+   _stats
    _firstTime
 );
 our @AA = qw(
@@ -49,6 +48,15 @@ our @AO = qw(
 
 __PACKAGE__->buildAccessorsScalar(\@AS);
 __PACKAGE__->buildAccessorsArray(\@AA);
+
+BEGIN {
+   my $osname = {
+      cygwin  => \&_killTcpdumpWin32,
+      MSWin32 => \&_killTcpdumpWin32,
+   };
+
+   *killTcpdump = $osname->{$^O} || \&_killTcpdumpOther;
+}
 
 our @dumpList = ();
 $SIG{INT} = sub { $_->DESTROY for @dumpList; exit 0 };
@@ -98,13 +106,13 @@ sub start {
    }
    else {
       my $child = fork;
-      croak("@{[(caller(0))[3]]}: fork: $!") unless defined $child;
+      croak("@{[(caller(0))[3]]}: fork: $!\n") unless defined $child;
 
       if ($child) {
          # Waiting child process to create pcap file
          my $count; # Just to avoid an infinite loop and report an error
          while (! -f $self->file) { last if ++$count == 100_000_000 };
-         croak("@{[(caller(0))[3]]}: too long for netpacket_tcpdump to start")
+         croak("@{[(caller(0))[3]]}: too long for tcpdump process to start\n")
             if $count && $count == 100_000_000;
 
          sleep(1); # Be sure the packet capture is ready
@@ -122,36 +130,102 @@ sub start {
          $< = $>; # Gives full root here, cause of file creation.
                   # For setuid programs to work.
 
-         Net::Packet::netpacket_tcpdump(
-            $self->env->dev,
-            $self->file,
-            $self->filter,
-            1514,
-            $self->env->promisc,
-            $self->env->debug,
-         ) or croak("@{[(caller(0))[3]]}: netpacket_tcpdump: $!");
+         $SIG{TERM} = sub { $self->DESTROY };
+         $SIG{INT}  = sub { $self->DESTROY };
+
+         $self->isRunning(1);
+         $self->_startTcpdump;
+         exit(0);
       }
    }
 }
 
+sub _startTcpdump {
+   my $self = shift;
+
+   my $err;
+   my $pd = Net::Pcap::open_live(
+      $self->env->dev,
+      1514,
+      $self->env->promisc,
+      1000,
+      \$err,
+   );
+   unless ($pd) {
+      croak("@{[(caller(0))[3]]}: open_live: $err\n");
+   }
+
+   my $net;
+   my $mask;
+   Net::Pcap::lookupnet($self->env->dev, \$net, \$mask, \$err);
+   if ($err) {
+      croak("@{[(caller(0))[3]]}: lookupnet: $err\n");
+   }
+
+   my $fcode;
+   if (Net::Pcap::compile($pd, \$fcode, $self->filter, 0, $mask) < 0) {
+      croak("@{[(caller(0))[3]]}: compile: ". Net::Pcap::geterr($pd). "\n");
+   }
+
+   if (Net::Pcap::setfilter($pd, $fcode) < 0) {
+      croak("@{[(caller(0))[3]]}: setfilter: ". Net::Pcap::geterr($pd). "\n");
+   }
+
+   my $p = Net::Pcap::dump_open($pd, $self->file);
+   unless ($p) {
+      croak("@{[(caller(0))[3]]}: dump_open: ". Net::Pcap::geterr($pd). "\n");
+   }
+
+   $self->_pcapd($pd);
+
+   Net::Pcap::loop($pd, -1, \&_tcpdumpCallback, $p);
+   Net::Pcap::close($pd);
+}
+
+sub _tcpdumpCallback {
+   my ($p, $hdr, $pkt) = @_;
+
+   Net::Pcap::dump($p, $hdr, $pkt);
+   Net::Pcap::dump_flush($p);
+}
+
+sub _killTcpdumpWin32 { kill('KILL', shift->_pid) }
+sub _killTcpdumpOther { kill('TERM', shift->_pid) }
+
 sub stop {
    my $self = shift;
 
+   # Father part, it kills its son
    if ($self->_pid) {
       sleep $self->waitOnStop if $self->waitOnStop;
 
-      kill('TERM', $self->_pid);
+      $self->killTcpdump;
       $self->_pid(undef);
+
+      $self->isRunning(0);
+      return;
    }
 
-   if ($self->_pcapd) {
+   # Son part, it prints pcap stats.
+   # Currently, on Windows, it does not work, because 
+   # Windows cannot receive signals
+   if ($self->isRunning && $self->_pcapd) {
+      my %stats;
+      Net::Pcap::stats($self->_pcapd, \%stats);
+      $self->_stats(\%stats);
+
       Net::Pcap::close($self->_pcapd);
+
+      $self->debugPrint(1, 'Frames received  : '. $stats{ps_recv});
+      $self->debugPrint(1, 'Frames dropped   : '. $stats{ps_drop});
+      $self->debugPrint(1, 'Frames if dropped: '. $stats{ps_ifdrop});
+
       $self->env && $self->env->link(undef);
       $self->_pcapd(undef);
-      $self->_pcapio(undef);
-   }
 
-   $self->isRunning(0);
+      $self->isRunning(0);
+      exit(0);
+   }
 }
 
 sub flush {
@@ -169,12 +243,12 @@ sub _setFilter {
    Net::Pcap::lookupnet($self->env->dev, \$net, \$mask, \$err);
    if ($err) {
       croak("@{[(caller(0))[3]]}: Net::Pcap::lookupnet: @{[$self->env->dev]}: ".
-            "$err");
+            "$err\n");
    }
 
    my $filter;
    Net::Pcap::compile($self->_pcapd, \$filter, $self->filter, 0, $mask);
-   croak("@{[(caller(0))[3]]}: Net::Pcap::compile: error") unless $filter;
+   croak("@{[(caller(0))[3]]}: Net::Pcap::compile: error\n") unless $filter;
 
    Net::Pcap::setfilter($self->_pcapd, $filter);
 }
@@ -182,7 +256,7 @@ sub _setFilter {
 sub _openFile {
    my $self = shift;
 
-   croak("@{[(caller(0))[3]]}: @{[$self->file]}: file not found")
+   croak("@{[(caller(0))[3]]}: @{[$self->file]}: file not found\n")
       unless $self->file && -f $self->file;
          
    # Do not try to open if nothing is waiting
@@ -192,7 +266,7 @@ sub _openFile {
    $self->_pcapd(Net::Pcap::open_offline($self->file, \$err));
    unless ($self->_pcapd) {
       croak("@{[(caller(0))[3]]}: Net::Pcap::open_offline: @{[$self->file]}: ".
-            "$err");
+            "$err\n");
    }
 
    $self->_setFilter if $self->_offlineMode;
@@ -205,8 +279,8 @@ sub _loopAnalyze {
    my $frame = Net::Packet::Frame->new(raw => $pkt) or return undef;
    defined $frame
       ? push @$userData, $frame
-      : carp("@{[(caller(0))[3]]}: unknown frame (number ",
-             scalar @$userData, ")\n");
+      : carp("@{[(caller(0))[3]]}: unknown frame (number ".
+             scalar(@$userData). ")\n");
 }
 
 sub _addFrame {
@@ -247,17 +321,10 @@ sub next {
    # Open the savefile and bless it to IO::File the first time method is used
    unless ($self->_pcapd) {
       $self->_openFile || return undef;
-      $self->_pcapio(
-         bless(Net::Packet::netpacket_pcap_fp($self->_pcapd), 'IO::File')
-      );
    }
 
-   # If it is not the first time the function is called, we setpos
-   $self->_pcapio->setpos($self->_fpos) if $self->_fpos;
-
    my $frame = $self->_addFrame;
-   $self->_fpos($self->_pcapio->getpos) if $self->_pcapio;
-   $self->_firstTime(0)                 if $frame; # Frame received, reset
+   $self->_firstTime(0) if $frame; # Frame received, reset
 
    $frame ? $self->nextFrame($frame) : undef;
 }
@@ -541,7 +608,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 

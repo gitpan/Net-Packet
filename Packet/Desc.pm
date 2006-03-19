@@ -1,5 +1,5 @@
 #
-# $Id: Desc.pm,v 1.2.2.24 2006/03/11 16:32:50 gomor Exp $
+# $Id: Desc.pm,v 1.2.2.26 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Desc;
 
@@ -17,6 +17,9 @@ use Net::Packet::Consts qw(:desc);
 our @AS = qw(
    env
    noEnvSet
+   target
+   protocol
+   family
    _io
    _sockaddr
 );
@@ -43,38 +46,9 @@ sub new {
    $self;
 }
 
-sub send {
-   my $self = shift;
-   my $raw  = shift;
-
-   while (1) {
-      my $ret = send($self->_io, $raw, 0, $self->_sockaddr);
-      unless ($ret) {
-         if ($!{ENOBUFS}) {
-            $self->debugPrint(
-               2, "send: ENOBUFS returned, sleeping for 1 second"
-            );
-            sleep 1;
-            next;
-         }
-         elsif ($!{EHOSTDOWN}) {
-            $self->debugPrint(2, "send: host is down");
-            last;
-         }
-         carp("@{[(caller(0))[3]]}: send: $!");
-      }
-      last;
-   }
-}
-
-sub close { shift->_io->close }
-
-sub DESTROY {
-   my $self = shift;
-
-   do { $self->_io->close; $self->_io(undef) } if $self->_io;
-   $self->SUPER::DESTROY if $self->can('SUPER::DESTROY');
-}
+sub send   { shift->_io->send(shift()) }
+sub close  { shift->_io->close         }
+sub ESTROY { shift->_io->DESTROY       }
 
 #
 # Helpers
@@ -166,7 +140,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
    

@@ -1,10 +1,11 @@
 #
-# $Id: Layer.pm,v 1.2.2.23 2006/03/11 16:32:50 gomor Exp $
+# $Id: Layer.pm,v 1.2.2.25 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Layer;
 
 use strict;
 use warnings;
+use Carp;
 
 require Class::Gomor::Hash;
 our @ISA = qw(Class::Gomor::Hash);
@@ -35,7 +36,7 @@ sub pack {
    my ($fmt, @args) = @_;
    my $res;
    eval { $res = CORE::pack($fmt, @args) };
-   $@ ? do { warn("@{[ref($self)]}: unable to pack structure\n"); undef }
+   $@ ? do { carp("@{[ref($self)]}: unable to pack structure\n"); undef }
       : $res;
 }
 
@@ -44,7 +45,7 @@ sub unpack {
    my ($fmt, $arg) = @_;
    my @res;
    eval { @res = CORE::unpack($fmt, $arg) };
-   $@ ? do { warn("@{[ref($self)]}: unable to unpack structure\n"); () }
+   $@ ? do { carp("@{[ref($self)]}: unable to unpack structure\n"); () }
       : @res;
 }
 
@@ -199,7 +200,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 

@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.1.2.19 2006/03/13 12:56:18 gomor Exp $
+# $Id: Packet.pm,v 1.1.2.23 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet;
 
@@ -7,53 +7,17 @@ require v5.6.1;
 
 use strict;
 use warnings;
-use Carp;
 
 require Exporter;
-require DynaLoader;
-use AutoLoader;
 
-our @ISA = qw(Exporter DynaLoader);
+our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.06';
+our $VERSION = '2.20';
 
-our $Env;
 require Net::Packet::Env;
-$Env = Net::Packet::Env->new unless $Env;
-
-sub AUTOLOAD {
-   # This AUTOLOAD is used to 'autoload' constants from the constant()
-   # XS function.  If a constant is not found then control is passed
-   # to the AUTOLOAD in AutoLoader.
-
-   our $AUTOLOAD;
-   (my $constname = $AUTOLOAD) =~ s/.*:://;
-
-   # Autoload only for libnetpacket C functions
-   return unless $constname =~ /^netpacket/;
-
-   croak("& not defined") if $constname eq 'constant';
-
-   my $val = constant($constname, @_ ? $_[0] : 0);
-   if ($! != 0) {
-      if ($! =~ /Invalid/ || $!{EINVAL}) {
-         $AutoLoader::AUTOLOAD = $AUTOLOAD;
-         goto &AutoLoader::AUTOLOAD;
-      }
-      else {
-         croak "Your vendor has not defined Net::Packet macro $constname";
-      }
-   }
-   {
-      no strict 'refs';
-      *$AUTOLOAD = sub () { $val };
-   }
-   goto &$AUTOLOAD;
-}
-
-bootstrap Net::Packet $VERSION;
+our $Env = Net::Packet::Env->new;
 
 1;
 
@@ -164,7 +128,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES  
 

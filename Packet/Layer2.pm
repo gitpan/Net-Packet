@@ -1,5 +1,5 @@
 #
-# $Id: Layer2.pm,v 1.1.1.1.4.13 2006/03/11 16:32:50 gomor Exp $
+# $Id: Layer2.pm,v 1.1.1.1.4.14 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Layer2;
 
@@ -55,7 +55,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 

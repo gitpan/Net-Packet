@@ -1,5 +1,5 @@
 #
-# $Id: DescL2.pm,v 1.2.2.15 2006/03/11 16:32:50 gomor Exp $
+# $Id: DescL2.pm,v 1.2.2.19 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::DescL2;
 
@@ -10,86 +10,19 @@ use Carp;
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);
 
-use IO::Socket;
-
-BEGIN {
-   my $osname = {
-      linux => \&_sendLinux,
-   };
-
-   *send = $osname->{$^O} || \&_sendOther;
-}
+require Net::Write::Layer2;
 
 sub new {
    my $self = shift->SUPER::new(@_);
 
-   croak("Must be EUID 0 to create a DescL2 object") if $>;
+   my $nwrite = Net::Write::Layer2->new(
+      dev => $self->env->dev,
+   );
+   $nwrite->open;
 
-   my $fd = Net::Packet::netpacket_open_l2($self->env->dev)
-      or croak("@{[(caller(0))[3]]}: netpacket_open_l2: ".
-               "@{[$self->env->dev]}: $!");
-
-   # XXX: implement dropping user priv. Does not work now, since 
-   # Net::Packet::Dump also requires privs to open bpf: race condition
-   # ???: maybe we do not need to drop privs here, but only in Dump
-   #$< = $> = getpwnam($ENV{USER}) if $>;
-
-   my $io = IO::Socket->new;
-   $io->fdopen($fd, "w") or croak("@{[(caller(0))[3]]}: fdopen: $!");
-   $self->_io($io);
+   $self->_io($nwrite);
 
    $self;
-}
-
-sub _sendLinux {
-   my $self = shift;
-   my $raw  = shift;
-
-   # Here is the Linux dirty hack (to choose outgoing device, surely)
-   my $sin = pack('S a14', 0, $self->env->dev);
-
-   while (1) {
-      my $ret = CORE::send($self->_io, $raw, 0, $sin);
-      unless ($ret) {
-         if ($!{ENOBUFS}) {
-            $self->debugPrint(
-               2, "send: ENOBUFS returned, sleeping for 1 second"
-            );
-            sleep 1;
-            next;
-         }
-         elsif ($!{EHOSTDOWN}) {
-            $self->debugPrint(2, "send: host is down");
-            last;
-         }
-         carp("@{[(caller(0))[3]]}: send: $!");
-      }
-      last;
-   }
-}
-
-sub _sendOther {
-   my $self = shift;
-   my $raw  = shift;
-
-   while (1) {
-      my $ret = $self->_io->syswrite($raw, length $raw);
-      unless ($ret) {
-         if ($!{ENOBUFS}) {  
-            $self->debugPrint(
-               2, "syswrite: ENOBUFS returned, sleeping for 1 second"
-            );
-            sleep 1;
-            next;
-         }
-         elsif ($!{EHOSTDOWN}) {
-            $self->debugPrint(2, "syswrite: host is down");
-            last;
-         }
-         carp("@{[(caller(0))[3]]}: syswrite: $!") unless $ret;
-      }
-      last;
-   }
 }
 
 1;
@@ -132,7 +65,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
       
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
  

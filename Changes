@@ -1,5 +1,13 @@
 Revision history for Perl extension Net::Packet.
 
+2.20 Sun Mar 19 18:23:51 CET 2006
+   - Net::Packet: ported under Cygwin (now works under Windows :) )
+   - Net::Packet: is now a pure Perl module
+   - IO::Interface: removed from dependances
+   - Net::Write: new dependance
+   - update: Desc*: now use new Net::Write portable module
+   - bugfix: Dump: many fix, Debian users should now be able to use Net::Packet
+
 2.06 Mon Mar 13 13:53:54 CET 2006
    - Frame: added noPadding option
 

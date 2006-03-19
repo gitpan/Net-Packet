@@ -1,10 +1,11 @@
 #
-# $Id: Utils.pm,v 1.1.2.18 2006/03/11 16:32:50 gomor Exp $
+# $Id: Utils.pm,v 1.1.2.22 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Utils;
 
 use strict;
 use warnings;
+use Carp;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -37,43 +38,63 @@ our %EXPORT_TAGS = (
    all => [ @EXPORT_OK ],
 );
 
+BEGIN {
+   my $osname = {
+      cygwin  => [ \&_autoMacWin32, \&_autoIpWin32, \&_autoIp6Win32, ],
+      MSWin32 => [ \&_autoMacWin32, \&_autoIpWin32, \&_autoIp6Win32, ],
+   };
+
+   *autoMac = $osname->{$^O}->[0] || \&_autoMacOther;
+   *autoIp  = $osname->{$^O}->[1] || \&_autoIpOther;
+   *autoIp6 = $osname->{$^O}->[2] || \&_autoIp6Other;
+}
+
 use Socket;
 use Socket6;
 use Net::Pcap;
-require IO::Interface;
 require Net::IPv6Addr;
-
-my $_UdpSocket;
-
-BEGIN {
-   require IO::Socket::INET;
-   $_UdpSocket = IO::Socket::INET->new(Proto => 'udp')
-      or die("@{[(caller(0))[3]]}: IO::Socket::INET->new: $!\n");
-}
 
 sub autoDev {
    my $err;
    my $dev = Net::Pcap::lookupdev(\$err);
    if (defined $err) {
-      warn("@{[(caller(0))[3]]}: Net::Pcap::lookupdev: $err ; ".
-           "unable to autochoose device");
+      carp("@{[(caller(0))[3]]}: Net::Pcap::lookupdev: $err ; ".
+           "unable to autochoose device\n");
    }
 
    $dev;
 }
 
-sub autoIp {
+sub _autoMacWin32 { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
+sub _autoIpWin32  { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
+sub _autoIp6Win32 { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
+
+sub _ifconfigGetIpv4Addr {
    my $dev = shift;
 
-   my $ip = $_UdpSocket->if_addr($dev)
-      or warn("@{[(caller(0))[3]]}: unable to autochoose IP from $dev");
+   return undef unless $dev =~ /^[a-z]+[0-9]+$/;
+
+   my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
+   my ($ip) = ($buf =~ /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/i);
+   $ip ? return lc($ip)
+       : return '127.0.0.1';
+}
+
+sub _autoIpOther {
+   my $dev = shift;
+
+   my $ip = _ifconfigGetIpv4Addr($dev)
+      or carp("@{[(caller(0))[3]]}: unable to autochoose IPv4 address ".
+              "from $dev\n");
 
    $ip;
 }
 
 sub _ifconfigGetIpv6Addr {
    my $dev = shift;
+
    return undef unless $dev =~ /^[a-z]+[0-9]+$/;
+
    my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
    my $mac = autoMac($dev);
    $buf =~ s/$dev//;
@@ -83,11 +104,12 @@ sub _ifconfigGetIpv6Addr {
        : return undef;
 }
 
-sub autoIp6 {
+sub _autoIp6Other {
    my $dev = shift;
 
    my $ip6 = _ifconfigGetIpv6Addr($dev)
-      or warn("@{[(caller(0))[3]]}: unable to autochoose IPv6 address from $dev");
+      or carp("@{[(caller(0))[3]]}: unable to autochoose IPv6 address ".
+              "from $dev\n");
 
    $ip6 = undef unless Net::IPv6Addr::ipv6_chkip($ip6);
 
@@ -96,7 +118,9 @@ sub autoIp6 {
 
 sub _ifconfigGetMac {
    my $dev = shift;
+
    return undef unless $dev =~ /^[a-z]+[0-9]+$/;
+
    my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
    my ($ip) = ($buf =~ /([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f
 ]{2}:[0-9a-f]{2})/i);
@@ -104,14 +128,12 @@ sub _ifconfigGetMac {
        : return 'ff:ff:ff:ff:ff:ff';
 }
 
-sub autoMac {
+sub _autoMacOther {
    my $dev = shift;
 
-   # On some systems, if_hwaddr simply does not work, we try to get MAC from
-   # `ifconfig $dev`
    my $mac;
-   unless ($mac = $_UdpSocket->if_hwaddr($dev) || _ifconfigGetMac($dev)) {
-      warn("@{[(caller(0))[3]]}: unable to autochoose MAC address from $dev");
+   unless ($mac = _ifconfigGetMac($dev)) {
+      carp("@{[(caller(0))[3]]}: unable to autochoose MAC address from $dev\n");
    }
 
    $mac;
@@ -121,27 +143,36 @@ sub getPcapLink { Net::Pcap::datalink(shift()) }
 
 sub getHostIpv4Addr {
    my $name  = shift;
+
+   return undef unless $name;
    return $name if $name =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
    my @addrs = (gethostbyname($name))[4];
    @addrs
       ? return join('.', unpack('C4', $addrs[0]))
-      : warn("@{[(caller(0))[3]]}: unable to resolv `$name' hostname");
+      : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
    return undef;
 }
 
 sub getHostIpv4Addrs {
    my $name  = shift;
+
+   return undef unless $name;
    return $name if $name =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
    my @addrs = (gethostbyname($name))[4];
    @addrs
       ? return @addrs
-      : warn("@{[(caller(0))[3]]}: unable to resolv `$name' hostname");
+      : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
    return ();
 }
 
 sub getHostIpv6Addr {
    my $name = shift;
+
+   return undef unless $name;
    return $name if Net::IPv6Addr::is_ipv6($name);
+
    my @res = getaddrinfo($name, 'ssh', AF_INET6, SOCK_STREAM);
    if (@res >= 5) {
       my ($ipv6) = getnameinfo($res[3], NI_NUMERICHOST | NI_NUMERICSERV);
@@ -149,7 +180,7 @@ sub getHostIpv6Addr {
       return $ipv6;
    }
    else {
-      warn("@{[(caller(0))[3]]}: unable to resolv `$name' hostname");
+      carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
    }
    return undef;
 }
@@ -344,7 +375,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
    
 =head1 RELATED MODULES
 

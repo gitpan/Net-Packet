@@ -1,9 +1,18 @@
 Tested ok against (only x86 architectures supported for now):
-FreeBSD 6.0 - Perl 5.8.7 - libpcap 0.9.1
-Linux 2.6.x - Perl 5.8.5 - libpcap 0.8.3 (Gentoo)
-OpenBSD 3.8 - Perl 5.8.6 - libpcap ?
 
-Net::Packet version 2.06
+   - FreeBSD 6.0 - Perl 5.8.7 - libpcap 0.9.1
+   - Linux 2.6.x - Perl 5.8.5 - libpcap 0.8.3 (Gentoo)
+   - Cygwin - Windows XP SP2 - Perl 5.8.5 (not all functions were tested)
+
+Net::Packet is now part of the following systems/distributions:
+
+   - NetBSD pkgsrc
+   - FreeBSD ports collection
+   - DragonFly ports collection
+   - Mandrake/Mandriva RPMs
+   - OpenPKG system
+
+Net::Packet version 2.20
 ========================
 
 This module is a unified framework to craft, send and receive packets at 
@@ -27,27 +36,18 @@ To install this module type the following:
    make test
    make install
 
-Eventually, you will have to pass -I and -L directives for the compilation to 
-work. This is done like that:
-
-   perl Makefile.PL INC="-I/somewhere/far/pcap/include" \
-      LIBS="-L/somewhere/far/pcap/lib -lpcap"
-
 DEPENDENCIES
 
 This module requires these other modules and libraries:
 
   Perl v5.6.1
   Class::Gomor::Hash
-  IO::Interface
   Net::IPv6Addr
   Net::Pcap
   Socket6
   Time::HiRes
   Bit::Vector
-
-  C libraries:
-  libpcap
+  Net::Write
 
 GETTING HELP
 
@@ -56,8 +56,7 @@ send a message to netpacket-users@gomor.org (this is a moderated list).
 
 LIMITATIONS
 
-Does NOT work under Microsoft Windows, nor big endian architecture. In fact, 
-it does only work with Linux, FreeBSD, OpenBSD and NetBSD.
+Does NOT work under big endian architecture.
 
 If auto* subs do not work, you will need to set $Env->dev, $Env->ip, $Env->mac 
 manually for each of your Net::Packet programs.
@@ -69,7 +68,7 @@ handle a few thousand packets on a 512MB RAM machine.
 COPYRIGHT AND LICENSE
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 Copyright (c) 2004-2006, Patrice <GomoR> Auffret
 

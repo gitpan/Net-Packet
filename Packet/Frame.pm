@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.2.2.53 2006/03/13 12:53:51 gomor Exp $
+# $Id: Frame.pm,v 1.2.2.56 2006/03/19 17:17:01 gomor Exp $
 #
 package Net::Packet::Frame;
 
@@ -65,7 +65,7 @@ sub new {
          $self->debugPrint(1, "DescL3 object created");
       }
       elsif ($self->l4) {
-         croak("You must manually create a DescL4 object");
+         croak("You must manually create a DescL4 object\n");
       }
    }
 
@@ -123,14 +123,14 @@ sub _unpackFromL3 {
             # Then ARP
             $l3 = Net::Packet::ARP->new(raw => $self->raw) or return undef;
             unless ($l3->hType eq NP_ARP_HTYPE_ETH) {
-               warn("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
+               carp("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
                return undef;
             }
          }
       }
 
       if ($l3->encapsulate eq NP_LAYER_UNKNOWN) {
-         warn("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
+         carp("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
          last;
       }
 
@@ -172,7 +172,7 @@ sub unpack {
    my $nextLayer;
    while (1) {
       unless (exists $whichLink->{$self->env->link}) {
-         warn("Unable to unpack Frame for this datalink type: ".
+         carp("Unable to unpack Frame for this datalink type: ".
               "@{[$self->env->link]}\n");
          last;
       }
@@ -194,7 +194,7 @@ sub unpack {
          or return undef;
 
       if ($self->l3->encapsulate eq NP_LAYER_UNKNOWN) {
-         warn("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
+         carp("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
          last;
       }
 
@@ -394,7 +394,7 @@ sub recv {
    # We already have the reply
    return undef if $self->reply;
 
-   croak("@{[(caller(0))[3]]}: \$self->env->dump variable not set")
+   croak("@{[(caller(0))[3]]}: \$self->env->dump variable not set\n")
       unless $self->env->dump;
 
    if ($self->l4 && $self->l4->can('recv')) {
@@ -404,7 +404,7 @@ sub recv {
       $self->reply($self->l3->recv($self));
    }
    else {
-      carp("@{[(caller(0))[3]]}: not implemented for this Layer");
+      carp("@{[(caller(0))[3]]}: not implemented for this Layer\n");
    }
 
    $self->reply
@@ -621,7 +621,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
-See Copying file in the source distribution archive.
+See LICENSE.Artistic file in the source distribution archive.
 
 =head1 RELATED MODULES
 
