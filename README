@@ -12,8 +12,8 @@ Net::Packet is now part of the following systems/distributions:
    - Mandrake/Mandriva RPMs
    - OpenPKG system
 
-Net::Packet version 2.20
-========================
+Net::Packet
+===========
 
 This module is a unified framework to craft, send and receive packets at 
 layers 2, 3, 4 and 7.

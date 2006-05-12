@@ -1,5 +1,5 @@
 #
-# $Id: Layer.pm,v 1.2.2.25 2006/03/19 17:17:01 gomor Exp $
+# $Id: Layer.pm,v 1.2.2.26 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::Layer;
 
@@ -17,7 +17,7 @@ our @AS = qw(
    payload
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(@_);

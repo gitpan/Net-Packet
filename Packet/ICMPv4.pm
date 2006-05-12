@@ -1,5 +1,5 @@
 #
-# $Id: ICMPv4.pm,v 1.2.2.31 2006/03/19 17:17:01 gomor Exp $
+# $Id: ICMPv4.pm,v 1.2.2.32 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::ICMPv4;
 
@@ -33,7 +33,7 @@ our @AS = qw(
    data
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(

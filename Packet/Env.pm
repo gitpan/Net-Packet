@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.1.2.19 2006/03/19 17:17:01 gomor Exp $
+# $Id: Env.pm,v 1.1.2.21 2006/04/25 20:55:47 gomor Exp $
 #
 package Net::Packet::Env;
 
@@ -30,12 +30,11 @@ our @AO = qw(
    debug
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(
       promisc   => 0,
-      link      => undef,
       debug     => 0,
       err       => 0,
       errString => "",

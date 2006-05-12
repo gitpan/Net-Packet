@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.2.2.41 2006/03/19 17:17:01 gomor Exp $
+# $Id: Dump.pm,v 1.2.2.44 2006/04/25 20:56:19 gomor Exp $
 #
 package Net::Packet::Dump;
 
@@ -46,8 +46,8 @@ our @AO = qw(
    framesSorted
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
-__PACKAGE__->buildAccessorsArray(\@AA);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsArray(\@AA);
 
 BEGIN {
    my $osname = {
@@ -100,8 +100,8 @@ sub start {
 
    if ($self->file && -f $self->file
    && ! $self->overwrite) {
-      $self->debugPrint(1, "`overwrite' parameter is 0, and file exists, ".
-                           "we will only analyze it.");
+      $self->cgDebugPrint(1, "`overwrite' parameter is 0, and file exists, ".
+                             "we will only analyze it.");
       return 1;
    }
    else {
@@ -123,9 +123,9 @@ sub start {
          return 1;
       }
       else {
-         $self->debugPrint(1, "dev:    [@{[$self->env->dev]}]\n".
-                              "file:   [@{[$self->file]}]\n".
-                              "filter: [@{[$self->filter]}]");
+         $self->cgDebugPrint(1, "dev:    [@{[$self->env->dev]}]\n".
+                                "file:   [@{[$self->file]}]\n".
+                                "filter: [@{[$self->filter]}]");
 
          $< = $>; # Gives full root here, cause of file creation.
                   # For setuid programs to work.
@@ -210,15 +210,12 @@ sub stop {
    # Currently, on Windows, it does not work, because 
    # Windows cannot receive signals
    if ($self->isRunning && $self->_pcapd) {
-      my %stats;
-      Net::Pcap::stats($self->_pcapd, \%stats);
-      $self->_stats(\%stats);
-
+      $self->getStats;
       Net::Pcap::close($self->_pcapd);
 
-      $self->debugPrint(1, 'Frames received  : '. $stats{ps_recv});
-      $self->debugPrint(1, 'Frames dropped   : '. $stats{ps_drop});
-      $self->debugPrint(1, 'Frames if dropped: '. $stats{ps_ifdrop});
+      $self->cgDebugPrint(1, 'Frames received  : '. $self->_stats->{ps_recv});
+      $self->cgDebugPrint(1, 'Frames dropped   : '. $self->_stats->{ps_drop});
+      $self->cgDebugPrint(1, 'Frames if dropped: '. $self->_stats->{ps_ifdrop});
 
       $self->env && $self->env->link(undef);
       $self->_pcapd(undef);
@@ -226,6 +223,17 @@ sub stop {
       $self->isRunning(0);
       exit(0);
    }
+}
+
+sub getStats {
+   my $self = shift;
+
+   carp("@{[(caller(0))[3]]}: unable to get stats, no pcap descriptor open\n")
+      unless $self->_pcapd;
+   
+   my %stats;
+   Net::Pcap::stats($self->_pcapd, \%stats);
+   $self->_stats(\%stats);
 }
 
 sub flush {
@@ -313,12 +321,12 @@ sub next {
       if (($thisTime - $self->_firstTime) > $self->timeoutOnNext) {
          $self->timeout(1);
          $self->_firstTime(0);
-         $self->debugPrint(1, "Timeout occured");
+         $self->cgDebugPrint(1, "Timeout occured");
          return undef;
       }
    }
 
-   # Open the savefile and bless it to IO::File the first time method is used
+   # Open the savefile
    unless ($self->_pcapd) {
       $self->_openFile || return undef;
    }
@@ -362,7 +370,7 @@ sub DESTROY {
 
    if ($self->unlinkOnDestroy && -f $self->file) {
       unlink($self->file);
-      $self->debugPrint(1, "@{[$self->file]} removed");
+      $self->cgDebugPrint(1, "@{[$self->file]} removed");
    }
 }
 
@@ -574,6 +582,10 @@ noEnvSet:        0
 =item B<start>
 
 Forks the tcpdump-like process that do frame capturing saved to a file. It does not forks a new process if the specified B<file> attribute exists, and B<overwrite> attributes is set to 0. It also sets B<isRunning> to 1 if a process is forked.
+
+=item B<getStats>
+
+Tries to get packet statistics on an open descriptor. It returns a reference to a hash that has to following fields: B<ps_recv>, B<ps_drop>, B<ps_ifdrop>.
 
 =item B<stop>
 

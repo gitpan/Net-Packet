@@ -1,5 +1,5 @@
 #
-# $Id: SLL.pm,v 1.1.2.11 2006/03/19 17:17:01 gomor Exp $
+# $Id: SLL.pm,v 1.1.2.12 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::SLL;
 
@@ -20,7 +20,7 @@ our @AS = qw(
    protocol
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(

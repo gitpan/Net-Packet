@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.2.2.56 2006/03/19 17:17:01 gomor Exp $
+# $Id: Frame.pm,v 1.2.2.58 2006/04/25 20:56:19 gomor Exp $
 #
 package Net::Packet::Frame;
 
@@ -41,7 +41,7 @@ our @AS = qw(
    noPadding
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(
@@ -57,12 +57,12 @@ sub new {
       if ($self->l2) {
          require Net::Packet::DescL2;
          $env->desc(Net::Packet::DescL2->new);
-         $self->debugPrint(1, "DescL2 object created");
+         $self->cgDebugPrint(1, "DescL2 object created");
       }
       elsif ($self->l3) {
          require Net::Packet::DescL3;
          $env->desc(Net::Packet::DescL3->new(target => $self->l3->dst));
-         $self->debugPrint(1, "DescL3 object created");
+         $self->cgDebugPrint(1, "DescL3 object created");
       }
       elsif ($self->l4) {
          croak("You must manually create a DescL4 object\n");
@@ -77,7 +77,7 @@ sub new {
             callStart => 0,
          ),
       );
-      $self->debugPrint(1, "Dump object created");
+      $self->cgDebugPrint(1, "Dump object created");
    }
 
    $self->raw ? $self->unpack : $self->pack;
@@ -302,32 +302,32 @@ sub send {
 
    if ($env->dump && ! $env->dump->isRunning) {
       $env->dump->start;
-      $self->debugPrint(1, "Dump object started");
+      $self->cgDebugPrint(1, "Dump object started");
    }
 
    if ($env->debug >= 3) {
       if ($self->isEth) {
-         $self->debugPrint(3,
+         $self->cgDebugPrint(3,
             "send: l2: type:". sprintf("0x%x", $self->l2->type). ", ".
             "@{[$self->l2->src]} => @{[$self->l2->dst]}"
          );
       }
 
       if ($self->isIp) {
-         $self->debugPrint(3,
+         $self->cgDebugPrint(3,
             "send: l3: protocol:@{[$self->l3->protocol]}, ".
             "size:@{[$self->getLength]}, ".
             "@{[$self->l3->src]} => @{[$self->l3->dst]}"
          );
       }
       elsif ($self->isArp) {
-         $self->debugPrint(3,
+         $self->cgDebugPrint(3,
             "send: l3: @{[$self->l3->src]} => @{[$self->l3->dst]}"
          );
       }
 
       if ($self->isTcp || $self->isUdp) {
-         $self->debugPrint(3,
+         $self->cgDebugPrint(3,
             "send: l4: @{[$self->l4->is]}, ".
             "@{[$self->l4->src]} => @{[$self->l4->dst]}"
          );
@@ -408,7 +408,7 @@ sub recv {
    }
 
    $self->reply
-      ? do { $self->debugPrint(1, "Reply received"); return $self->reply }
+      ? do { $self->cgDebugPrint(1, "Reply received"); return $self->reply }
       : return undef;
 }
 

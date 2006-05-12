@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.2.2.40 2006/03/19 17:17:01 gomor Exp $
+# $Id: IPv4.pm,v 1.2.2.41 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::IPv4;
 
@@ -34,7 +34,7 @@ our @AS = qw(
    doChecksum
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);      
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);      
 
 BEGIN {
    my $osname = {

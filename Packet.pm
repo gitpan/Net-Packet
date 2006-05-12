@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.1.2.23 2006/03/19 17:17:01 gomor Exp $
+# $Id: Packet.pm,v 1.1.2.24 2006/04/23 17:02:35 gomor Exp $
 #
 package Net::Packet;
 
@@ -14,7 +14,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw($Env);
 
-our $VERSION = '2.20';
+our $VERSION = '2.21';
 
 require Net::Packet::Env;
 our $Env = Net::Packet::Env->new;

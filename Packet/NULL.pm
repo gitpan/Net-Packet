@@ -1,5 +1,5 @@
 #
-# $Id: NULL.pm,v 1.1.2.20 2006/03/19 17:17:01 gomor Exp $
+# $Id: NULL.pm,v 1.1.2.21 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::NULL;
 
@@ -16,7 +16,7 @@ our @AS = qw(
    type
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(

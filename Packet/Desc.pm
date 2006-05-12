@@ -1,5 +1,5 @@
 #
-# $Id: Desc.pm,v 1.2.2.26 2006/03/19 17:17:01 gomor Exp $
+# $Id: Desc.pm,v 1.2.2.28 2006/04/25 20:56:19 gomor Exp $
 #
 package Net::Packet::Desc;
 
@@ -24,7 +24,7 @@ our @AS = qw(
    _sockaddr
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(
@@ -35,10 +35,10 @@ sub new {
 
    my $env = $self->env;
 
-   $self->debugPrint(1, "Dev: [@{[$env->dev]}]\n".
-                        "Ip:  [@{[$env->ip]}]\n".
-                        "Mac: [@{[$env->mac]}]");
-   $self->debugPrint(1, "Ip6: [@{[$env->ip6]}]")
+   $self->cgDebugPrint(1, "Dev: [@{[$env->dev]}]\n".
+                          "Ip:  [@{[$env->ip]}]\n".
+                          "Mac: [@{[$env->mac]}]");
+   $self->cgDebugPrint(1, "Ip6: [@{[$env->ip6]}]")
       if $env->ip6;
 
    $env->desc($self) unless $self->noEnvSet;

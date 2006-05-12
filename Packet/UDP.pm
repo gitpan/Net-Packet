@@ -1,5 +1,5 @@
 #
-# $Id: UDP.pm,v 1.2.2.36 2006/03/19 17:17:01 gomor Exp $
+# $Id: UDP.pm,v 1.2.2.37 2006/04/25 20:50:04 gomor Exp $
 #
 package Net::Packet::UDP;
 
@@ -20,7 +20,7 @@ our @AS = qw(
    checksum
 );
 
-__PACKAGE__->buildAccessorsScalar(\@AS);
+__PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    shift->SUPER::new(

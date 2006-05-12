@@ -1,5 +1,10 @@
 Revision history for Perl extension Net::Packet.
 
+2.21 Fri May 12 23:30:06 CEST 2006
+   - Net::Packet::Dump: added getStats()
+   - now uses Class::Gomor instead of Class::Gomor::Hash (but objects are 
+     still hashes)
+
 2.20 Sun Mar 19 18:23:51 CET 2006
    - Net::Packet: ported under Cygwin (now works under Windows :) )
    - Net::Packet: is now a pure Perl module
