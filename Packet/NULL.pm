@@ -1,14 +1,12 @@
 #
-# $Id: NULL.pm,v 1.1.2.21 2006/04/25 20:50:04 gomor Exp $
+# $Id: NULL.pm,v 1.1.2.22 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::NULL;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer2;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer2 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer2);
 
 use Net::Packet::Consts qw(:null :layer);
 

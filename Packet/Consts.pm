@@ -1,8 +1,7 @@
 #
-# $Id: Consts.pm,v 1.1.2.14 2006/03/19 17:17:01 gomor Exp $
+# $Id: Consts.pm,v 1.1.2.15 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Consts;
-
 use strict;
 use warnings;
 

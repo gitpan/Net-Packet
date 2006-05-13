@@ -1,14 +1,12 @@
 #
-# $Id: Layer7.pm,v 1.1.1.1.4.26 2006/04/25 20:50:04 gomor Exp $
+# $Id: Layer7.pm,v 1.1.1.1.4.27 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Layer7;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer);
 
 use Net::Packet::Consts qw(:layer);
 

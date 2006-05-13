@@ -1,8 +1,7 @@
 #
-# $Id: RAW.pm,v 1.1.2.16 2006/03/19 17:17:01 gomor Exp $
+# $Id: RAW.pm,v 1.1.2.17 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::RAW;
-
 use strict;
 use warnings;
 

@@ -1,14 +1,12 @@
 #
-# $Id: UDP.pm,v 1.2.2.37 2006/04/25 20:50:04 gomor Exp $
+# $Id: UDP.pm,v 1.2.2.38 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::UDP;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer4;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer4 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer4);
 
 use Net::Packet::Utils qw(inetChecksum getRandomHighPort inetAton inet6Aton);
 use Net::Packet::Consts qw(:udp :layer);

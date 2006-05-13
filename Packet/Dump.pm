@@ -1,8 +1,7 @@
 #
-# $Id: Dump.pm,v 1.2.2.44 2006/04/25 20:56:19 gomor Exp $
+# $Id: Dump.pm,v 1.2.2.45 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Dump;
-
 use strict;
 use warnings;
 use Carp;

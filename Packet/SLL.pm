@@ -1,14 +1,12 @@
 #
-# $Id: SLL.pm,v 1.1.2.12 2006/04/25 20:50:04 gomor Exp $
+# $Id: SLL.pm,v 1.1.2.13 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::SLL;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer2;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer2 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer2);
 
 use Net::Packet::Consts qw(:sll :layer);
 

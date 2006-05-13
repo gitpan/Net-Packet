@@ -1,11 +1,9 @@
 #
-# $Id: DescL2.pm,v 1.2.2.19 2006/03/19 17:17:01 gomor Exp $
+# $Id: DescL2.pm,v 1.2.2.20 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::DescL2;
-
 use strict;
 use warnings;
-use Carp;
 
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);

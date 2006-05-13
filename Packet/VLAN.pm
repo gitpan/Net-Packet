@@ -1,14 +1,12 @@
 #
-# $Id: VLAN.pm,v 1.1.2.8 2006/04/25 20:50:04 gomor Exp $
+# $Id: VLAN.pm,v 1.1.2.9 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::VLAN;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer3;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer3);
 
 use Net::Packet qw($Env);
 use Net::Packet::Consts qw(:vlan :layer);

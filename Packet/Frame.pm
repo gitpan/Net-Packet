@@ -1,8 +1,7 @@
 #
-# $Id: Frame.pm,v 1.2.2.58 2006/04/25 20:56:19 gomor Exp $
+# $Id: Frame.pm,v 1.2.2.59 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Frame;
-
 use warnings;
 use strict;
 use Carp;

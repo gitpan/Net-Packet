@@ -1,11 +1,9 @@
 #
-# $Id: Desc.pm,v 1.2.2.28 2006/04/25 20:56:19 gomor Exp $
+# $Id: Desc.pm,v 1.2.2.29 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Desc;
-
 use strict;
 use warnings;
-use Carp;
 
 require Exporter;
 require Class::Gomor::Hash;

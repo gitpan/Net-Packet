@@ -1,8 +1,7 @@
 #
-# $Id: Utils.pm,v 1.1.2.22 2006/03/19 17:17:01 gomor Exp $
+# $Id: Utils.pm,v 1.1.2.23 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Utils;
-
 use strict;
 use warnings;
 use Carp;

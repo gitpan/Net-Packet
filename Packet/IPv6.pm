@@ -1,14 +1,12 @@
 #
-# $Id: IPv6.pm,v 1.2.2.31 2006/04/25 20:50:04 gomor Exp $
+# $Id: IPv6.pm,v 1.2.2.32 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::IPv6;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer3;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer3 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer3);
 
 use Carp;
 use Net::Packet qw($Env);

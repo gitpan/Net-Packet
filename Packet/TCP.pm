@@ -1,14 +1,12 @@
 #
-# $Id: TCP.pm,v 1.2.2.44 2006/04/25 20:50:04 gomor Exp $
+# $Id: TCP.pm,v 1.2.2.45 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::TCP;
-
 use strict;
 use warnings;
 
 require Net::Packet::Layer4;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer4 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer4);
 
 use Net::Packet::Utils qw(inetChecksum getRandomHighPort getRandom32bitsInt
    inetAton inet6Aton);

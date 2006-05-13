@@ -1,15 +1,13 @@
 #
-# $Id: ICMPv4.pm,v 1.2.2.32 2006/04/25 20:50:04 gomor Exp $
+# $Id: ICMPv4.pm,v 1.2.2.33 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::ICMPv4;
-
 use strict;
 use warnings;
 use Carp;
 
 require Net::Packet::Layer4;
-require Class::Gomor::Hash;
-our @ISA = qw(Net::Packet::Layer4 Class::Gomor::Hash);
+our @ISA = qw(Net::Packet::Layer4);
 
 use Net::Packet::Utils qw(getRandom16bitsInt getRandom32bitsInt inetChecksum
    getHostIpv4Addr inetAton inetNtoa);

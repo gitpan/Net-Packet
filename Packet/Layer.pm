@@ -1,8 +1,7 @@
 #
-# $Id: Layer.pm,v 1.2.2.26 2006/04/25 20:50:04 gomor Exp $
+# $Id: Layer.pm,v 1.2.2.27 2006/05/13 09:53:59 gomor Exp $
 #
 package Net::Packet::Layer;
-
 use strict;
 use warnings;
 use Carp;

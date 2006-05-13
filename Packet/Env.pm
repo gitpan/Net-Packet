@@ -1,8 +1,7 @@
 #
-# $Id: Env.pm,v 1.1.2.21 2006/04/25 20:55:47 gomor Exp $
+# $Id: Env.pm,v 1.1.2.22 2006/05/13 09:47:02 gomor Exp $
 #
 package Net::Packet::Env;
-
 use strict;
 use warnings;
 
@@ -57,7 +56,7 @@ sub new {
 
 sub debug {
    my $self = shift;
-   @_ ? $self->{debug} = $Class::Gomor::Hash::Debug = shift
+   @_ ? $self->{debug} = $Class::Gomor::Debug = shift
       : $self->{debug};
 }
 
