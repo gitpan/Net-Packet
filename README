@@ -41,7 +41,7 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Perl v5.6.1
-  Class::Gomor
+  Class::Gomor::Hash
   Net::IPv6Addr
   Net::Pcap
   Socket6

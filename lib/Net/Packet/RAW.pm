@@ -1,5 +1,5 @@
 #
-# $Id: RAW.pm,v 1.1.2.17 2006/05/13 09:53:59 gomor Exp $
+# $Id: RAW.pm,v 1.2.2.1 2006/05/01 17:23:33 gomor Exp $
 #
 package Net::Packet::RAW;
 use strict;
@@ -7,18 +7,19 @@ use warnings;
 
 require Net::Packet::Layer2;
 our @ISA = qw(Net::Packet::Layer2);
+__PACKAGE__->cgBuildIndices;
 
 use Net::Packet::Consts qw(:layer);
 
-sub new { shift->SUPER::new }
+no strict 'vars';
 
-sub pack { shift->raw("") }
+sub pack { shift->[$__raw] = '' }
 
 sub unpack {
    my $self = shift;
-   my $payload = $self->SUPER::unpack('a*', $self->raw)
+   my $payload = $self->SUPER::unpack('a*', $self->[$__raw])
       or return undef;
-   $self->payload($payload);
+   $self->[$__payload] = $payload;
    1;
 }
 

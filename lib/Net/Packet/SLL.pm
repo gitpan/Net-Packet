@@ -1,5 +1,5 @@
 #
-# $Id: SLL.pm,v 1.1.2.13 2006/05/13 09:53:59 gomor Exp $
+# $Id: SLL.pm,v 1.2.2.1 2006/05/01 17:26:06 gomor Exp $
 #
 package Net::Packet::SLL;
 use strict;
@@ -17,8 +17,10 @@ our @AS = qw(
    source
    protocol
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -38,14 +40,12 @@ sub getLength { NP_SLL_HDR_LEN }
 sub pack {
    my $self = shift;
 
-   $self->raw(
-      $self->SUPER::pack('nnnH16n',
-         $self->packetType,
-         $self->addressType,
-         $self->addressLength,
-         $self->source,
-         $self->protocol,
-      ),
+   $self->[$__raw] = $self->SUPER::pack('nnnH16n',
+      $self->[$__packetType],
+      $self->[$__addressType],
+      $self->[$__addressLength],
+      $self->[$__source],
+      $self->[$__protocol],
    ) or return undef;
 
    1;
@@ -55,15 +55,15 @@ sub unpack {
    my $self = shift;
 
    my ($pt, $at, $al, $s, $p, $payload) =
-      $self->SUPER::unpack('nnnH16n a*', $self->raw)
+      $self->SUPER::unpack('nnnH16n a*', $self->[$__raw])
          or return undef;
 
-   $self->packetType($pt);
-   $self->addressType($at);
-   $self->addressLength($al);
-   $self->source($s);
-   $self->protocol($p);
-   $self->payload($payload);
+   $self->[$__packetType]    = $pt;
+   $self->[$__addressType]   = $at;
+   $self->[$__addressLength] = $al;
+   $self->[$__source]        = $s;
+   $self->[$__protocol]      = $p;
+   $self->[$__payload]       = $payload;
 
    1;
 }
@@ -74,7 +74,7 @@ sub encapsulate {
       NP_SLL_PROTOCOL_IPv6() => NP_LAYER_IPv6(),
    };
 
-   $types->{shift->protocol} || NP_LAYER_UNKNOWN();
+   $types->{shift->[$__protocol]} || NP_LAYER_UNKNOWN();
 }
 
 sub print {
@@ -95,7 +95,7 @@ sub print {
 # Helpers
 #
 
-sub _isProtocol    { shift->protocol == shift()               }
+sub _isProtocol    { shift->[$__protocol] == shift()          }
 sub isProtocolIpv4 { shift->_isProtocol(NP_SLL_PROTOCOL_IPv4) }
 sub isProtocolIpv6 { shift->_isProtocol(NP_SLL_PROTOCOL_IPv6) }
 sub isProtocolIp   {

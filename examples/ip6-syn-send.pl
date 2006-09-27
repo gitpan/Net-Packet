@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: ip6-syn-send.pl,v 1.2.2.7 2005/05/22 19:09:31 gomor Exp $
+# $Id: ip6-syn-send.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,11 +9,11 @@ use Getopt::Std;
 my %opts;
 getopts('i:d:m:p:v', \%opts);
 
-die "Usage: ip6-syn-send -i ipDst -m macDst -p dstPort [-M srcMac] ".
+die "Usage: $0 -i ipDst -m macDst -p dstPort [-M srcMac] ".
     "[-d dev] [-v]\n"
    unless $opts{i} && $opts{m} && $opts{p};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->mac($opts{M}) if $opts{M};

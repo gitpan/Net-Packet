@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: sniffer.pl,v 1.2.2.5 2005/05/22 19:07:56 gomor Exp $
+# $Id: sniffer.pl,v 1.3.2.2 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,7 +9,7 @@ use Getopt::Std;
 my %opts;
 getopts('d:f:v347khpA', \%opts);
 
-die "Usage: sniffer.pl [-f filter] [-d device] [-v] [-3] [-4] [-7] [-p]\n".
+die "Usage: $0 [-f filter] [-d device] [-v] [-3] [-4] [-7] [-p]\n".
     " -d:   device to sniff on\n".
     " -f:   filter to use\n".
     " -3:   print layer 3\n".
@@ -24,20 +22,19 @@ die "Usage: sniffer.pl [-f filter] [-d device] [-v] [-3] [-4] [-7] [-p]\n".
     ""
    if $opts{h};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if     $opts{d};
-$Env->promisc(1)    if     $opts{p};
-$opts{f} = ""       unless $opts{f};
 $Env->debug(3)      if     $opts{v};
 
 my $dump = Net::Packet::Dump->new(
-   filter          => $opts{f},
-   overwrite       => 1,
-   unlinkOnDestroy => $opts{k} ? 0 : 1,
-   noStore         => 1,
-   callStart       => 1,
+   filter        => $opts{f} ? $opts{f} : '',
+   overwrite     => 1,
+   unlinkOnClean => $opts{k} ? 0 : 1,
+   noStore       => 1,
+   promisc       => $opts{p} ? 1 : 0,
 );
+$dump->start;
 
 while (1) {
    if ($dump->next) {
@@ -57,3 +54,5 @@ while (1) {
       }
    }
 }
+$dump->stop;
+$dump->clean;

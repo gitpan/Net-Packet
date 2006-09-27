@@ -1,5 +1,5 @@
 #
-# $Id: TCP.pm,v 1.2.2.45 2006/05/13 09:53:59 gomor Exp $
+# $Id: TCP.pm,v 1.3.2.3 2006/05/25 12:17:48 gomor Exp $
 #
 package Net::Packet::TCP;
 use strict;
@@ -25,8 +25,10 @@ our @AS = qw(
    urp
    options
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -44,12 +46,12 @@ sub new {
       @_,
    );
 
-   unless ($self->raw) {
+   unless ($self->[$__raw]) {
       # Autocompute header length if not user specified
-      unless ($self->off) {
+      unless ($self->[$__off]) {
          my $hLen = NP_TCP_HDR_LEN;
-         $hLen   += length($self->options) if $self->options;
-         $self->off($hLen / 4);
+         $hLen   += length($self->[$__options]) if $self->[$__options];
+         $self->[$__off] = $hLen / 4;
       }
    }
 
@@ -82,8 +84,8 @@ sub recv {
    for (@{$href->{$l2Key}{$l3Key}{$l4Key}}) {
       if (($_->timestamp ge $frame->timestamp)
       &&   $_->l4->error
-      &&  ($_->l4->error->l4->src == $self->src)
-      &&  ($_->l4->error->l4->dst == $self->dst)) {
+      &&  ($_->l4->error->l4->src == $self->[$__src])
+      &&  ($_->l4->error->l4->dst == $self->[$__dst])) {
          return $_;
       }
    }
@@ -95,24 +97,23 @@ sub pack {
    my $self = shift;
 
    my $offX2Flags =
-   ($self->off << 12) | (0x0f00 & ($self->x2 << 8)) | (0x00ff & $self->flags);
+      ($self->[$__off] << 12)|(0x0f00 & ($self->[$__x2] << 8))|(0x00ff & $self->[$__flags]);
 
-   $self->raw(
-      $self->SUPER::pack('nnNNnnnn',
-         $self->src,
-         $self->dst,
-         $self->seq,
-         $self->ack,
-         $offX2Flags,
-         $self->win,
-         $self->checksum,
-         $self->urp,
-      ),
+   $self->[$__raw] = $self->SUPER::pack('nnNNnnnn',
+      $self->[$__src],
+      $self->[$__dst],
+      $self->[$__seq],
+      $self->[$__ack],
+      $offX2Flags,
+      $self->[$__win],
+      $self->[$__checksum],
+      $self->[$__urp],
    ) or return undef;
 
-   if ($self->options) {
-      $self->raw($self->raw. $self->SUPER::pack('a*', $self->options))
-         or return undef;
+   if ($self->[$__options]) {
+      $self->[$__raw] =
+         $self->[$__raw].$self->SUPER::pack('a*', $self->[$__options])
+            or return undef;
    }
 
    1;
@@ -122,48 +123,48 @@ sub unpack {
    my $self = shift;
 
    my ($src, $dst, $seq, $ack, $offX2Flags, $win, $checksum, $urp, $payload) =
-      $self->SUPER::unpack('nnNNnnnn a*', $self->raw)
+      $self->SUPER::unpack('nnNNnnnn a*', $self->[$__raw])
          or return undef;
 
-   $self->src($src);
-   $self->dst($dst);
-   $self->seq($seq);
-   $self->ack($ack);
-   $self->off(($offX2Flags & 0xf000) >> 12);
-   $self->x2(($offX2Flags & 0x0f00) >> 8);
-   $self->flags($offX2Flags & 0x00ff);
-   $self->win($win);
-   $self->checksum($checksum);
-   $self->urp($urp);
-   $self->payload($payload);
+   $self->[$__src]      = $src;
+   $self->[$__dst]      = $dst;
+   $self->[$__seq]      = $seq;
+   $self->[$__ack]      = $ack;
+   $self->[$__off]      = ($offX2Flags & 0xf000) >> 12;
+   $self->[$__x2]       = ($offX2Flags & 0x0f00) >> 8;
+   $self->[$__flags]    = $offX2Flags & 0x00ff;
+   $self->[$__win]      = $win;
+   $self->[$__checksum] = $checksum;
+   $self->[$__urp]      = $urp;
+   $self->[$__payload]  = $payload;
 
-   my ($options, $payload2) =
-      $self->SUPER::unpack('a'. $self->getOptionsLength. 'a*', $self->payload)
-         or return undef;
+   my ($options, $payload2) = $self->SUPER::unpack(
+      'a'. $self->getOptionsLength. 'a*', $self->[$__payload]
+   ) or return undef;
 
-   $self->options($options);
-   $self->payload($payload2);
+   $self->[$__options] = $options;
+   $self->[$__payload] = $payload2;
 
    1;
 }
 
-sub getLength        { my $self = shift; $self->off ? $self->off * 4 : 0 }
-sub getHeaderLength  { NP_TCP_HDR_LEN }
+sub getLength { my $self = shift; $self->[$__off] ? $self->[$__off] * 4 : 0 }
+sub getHeaderLength { NP_TCP_HDR_LEN }
 sub getOptionsLength {
    my $self = shift;
-   $self->getLength > $self->getHeaderLength
-      ? $self->getLength - $self->getHeaderLength
-      : 0;
+   my $gLen = $self->getLength;
+   my $hLen = $self->getHeaderLength;
+   $gLen > $hLen ? $gLen - $hLen : 0;
 }
 
 sub computeChecksums {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    my $env = $frame->env;
 
-   my $offX2Flags = ($self->off << 12) | (0x0f00 & ($self->x2 << 8))
-                  | (0x00ff & $self->flags);
+   my $offX2Flags = ($self->[$__off] << 12) | (0x0f00 & ($self->[$__x2] << 8))
+                  | (0x00ff & $self->[$__flags]);
 
    my $phpkt;
    # Handle checksumming with DescL2&3
@@ -215,18 +216,18 @@ sub computeChecksums {
    }
 
    $phpkt .= $self->SUPER::pack('nnNNnnnn',
-      $self->src,
-      $self->dst,
-      $self->seq,
-      $self->ack,
+      $self->[$__src],
+      $self->[$__dst],
+      $self->[$__seq],
+      $self->[$__ack],
       $offX2Flags,
-      $self->win,
-      $self->checksum,
-      $self->urp,
+      $self->[$__win],
+      $self->[$__checksum],
+      $self->[$__urp],
    ) or return undef;
 
-   if ($self->options) {
-      $phpkt .= $self->SUPER::pack('a*', $self->options)
+   if ($self->[$__options]) {
+      $phpkt .= $self->SUPER::pack('a*', $self->[$__options])
          or return undef;
    }
 
@@ -235,7 +236,7 @@ sub computeChecksums {
          or return undef;
    }
 
-   $self->checksum(inetChecksum($phpkt));
+   $self->[$__checksum] = inetChecksum($phpkt);
 
    1;
 }
@@ -244,12 +245,12 @@ sub encapsulate { shift->payload ? NP_LAYER_7 : NP_LAYER_NONE }
 
 sub getKey {
    my $self = shift;
-   $self->is.':'.$self->src.'-'.$self->dst;
+   $self->is.':'.$self->[$__src].'-'.$self->[$__dst];
 }
 
 sub getKeyReverse {
    my $self = shift;
-   $self->is.':'.$self->dst.'-'.$self->src;
+   $self->is.':'.$self->[$__dst].'-'.$self->[$__src];
 }
 
 sub print {
@@ -261,21 +262,21 @@ sub print {
       "$l:+$i: seq:0x%.8x  win:%d  [%d => %d]\n".
       "$l: $i: ack:0x%.8x  flags:0x%.2x  urp:0x%.4x  checksum:0x%.4x\n".
       "$l: $i: length:%d  optionsLength:%d",
-         $self->seq,
-         $self->win,
-         $self->src,
-         $self->dst,
-         $self->ack,
-         $self->flags,
-         $self->urp,
-         $self->checksum,
+         $self->[$__seq],
+         $self->[$__win],
+         $self->[$__src],
+         $self->[$__dst],
+         $self->[$__ack],
+         $self->[$__flags],
+         $self->[$__urp],
+         $self->[$__checksum],
          $self->getLength,
          $self->getOptionsLength,
    ;
 
-   if ($self->options) {
+   if ($self->[$__options]) {
       $buf .= sprintf("\n$l: $i: options:%s",
-         $self->SUPER::unpack('H*', $self->options))
+         $self->SUPER::unpack('H*', $self->[$__options]))
             or return undef;
    }
 

@@ -1,5 +1,5 @@
 #
-# $Id: NULL.pm,v 1.1.2.22 2006/05/13 09:53:59 gomor Exp $
+# $Id: NULL.pm,v 1.2.2.1 2006/05/01 17:21:19 gomor Exp $
 #
 package Net::Packet::NULL;
 use strict;
@@ -13,8 +13,10 @@ use Net::Packet::Consts qw(:null :layer);
 our @AS = qw(
    type
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -29,7 +31,7 @@ sub getLength { NP_NULL_HDR_LEN }
 
 sub pack {
    my $self = shift;
-   $self->raw($self->SUPER::pack('N', $self->type))
+   $self->[$__raw] = $self->SUPER::pack('N', $self->[$__type])
       or return undef;
    1;
 }
@@ -37,11 +39,11 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($type, $payload) = $self->SUPER::unpack('N a*', $self->raw)
+   my ($type, $payload) = $self->SUPER::unpack('N a*', $self->[$__raw])
       or return undef;
 
-   $self->type($type);
-   $self->payload($payload);
+   $self->[$__type]    = $type;
+   $self->[$__payload] = $payload;
 
    1;
 }
@@ -52,7 +54,7 @@ sub encapsulate {
       NP_NULL_TYPE_IPv6() => NP_LAYER_IPv6(),
    };
 
-   $types->{shift->type} || NP_LAYER_UNKNOWN();
+   $types->{shift->[$__type]} || NP_LAYER_UNKNOWN();
 }
 
 sub print {
@@ -67,7 +69,7 @@ sub print {
 # Helpers
 #
 
-sub _isType    { shift->type == shift()                                   }
+sub _isType    { shift->[$__type] == shift()                              }
 sub isTypeIpv4 { shift->_isType(NP_NULL_TYPE_IPv4)                        }
 sub isTypeIpv6 { shift->_isType(NP_NULL_TYPE_IPv6)                        }
 sub isTypeIp   { my $self = shift; $self->isTypeIpv4 || $self->isTypeIpv6 }

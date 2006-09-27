@@ -1,5 +1,5 @@
 #
-# $Id: Layer7.pm,v 1.1.1.1.4.27 2006/05/13 09:53:59 gomor Exp $
+# $Id: Layer7.pm,v 1.2.2.4 2006/05/28 19:22:32 gomor Exp $
 #
 package Net::Packet::Layer7;
 use strict;
@@ -13,8 +13,10 @@ use Net::Packet::Consts qw(:layer);
 our @AS = qw(
    data
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new { shift->SUPER::new(@_) }
 

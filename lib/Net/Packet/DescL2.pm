@@ -1,5 +1,5 @@
 #
-# $Id: DescL2.pm,v 1.2.2.20 2006/05/13 09:53:59 gomor Exp $
+# $Id: DescL2.pm,v 1.3.2.1 2006/04/25 21:39:52 gomor Exp $
 #
 package Net::Packet::DescL2;
 use strict;
@@ -7,6 +7,9 @@ use warnings;
 
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);
+__PACKAGE__->cgBuildIndices;
+
+no strict 'vars';
 
 require Net::Write::Layer2;
 
@@ -14,11 +17,11 @@ sub new {
    my $self = shift->SUPER::new(@_);
 
    my $nwrite = Net::Write::Layer2->new(
-      dev => $self->env->dev,
+      dev => $self->[$__dev],
    );
    $nwrite->open;
 
-   $self->_io($nwrite);
+   $self->[$___io] = $nwrite;
 
    $self;
 }

@@ -1,5 +1,5 @@
 #
-# $Id: ICMPv4.pm,v 1.2.2.33 2006/05/13 09:53:59 gomor Exp $
+# $Id: ICMPv4.pm,v 1.3.2.4 2006/06/04 13:36:37 gomor Exp $
 #
 package Net::Packet::ICMPv4;
 use strict;
@@ -10,7 +10,7 @@ require Net::Packet::Layer4;
 our @ISA = qw(Net::Packet::Layer4);
 
 use Net::Packet::Utils qw(getRandom16bitsInt getRandom32bitsInt inetChecksum
-   getHostIpv4Addr inetAton inetNtoa);
+   inetAton inetNtoa);
 use Net::Packet::Consts qw(:icmpv4 :layer);
 require Net::Packet::IPv4;
 require Net::Packet::Frame;
@@ -30,8 +30,10 @@ our @AS = qw(
    error
    data
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -50,11 +52,10 @@ sub new {
       @_,
    );
 
-   $self->gateway(getHostIpv4Addr($self->gateway));
-
-   unless ($self->raw) {
+   unless ($self->[$__raw]) {
       # This line handles the packing of ICMPv4 Destination unreach IPv4 Frame
-      $self->data($self->error->raw) if $self->error;
+      my $error = $self->[$__error];
+      $self->[$__data] = $error->raw if $error;
    }
 
    $self;
@@ -64,8 +65,8 @@ sub getKey        { 'ICMP' }
 sub getKeyReverse { 'ICMP' }
 
 sub recv {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    my $env = $frame->env;
 
@@ -74,41 +75,41 @@ sub recv {
 
       if ($frame->l3) {
          if ($_->isIcmpv4 && $_->l3->src eq $frame->l3->dst) {
-            if ($self->type  == NP_ICMPv4_TYPE_ECHO_REQUEST
-            &&  $_->l4->type == NP_ICMPv4_TYPE_ECHO_REPLY) {
+            if ($self->[$__type] == NP_ICMPv4_TYPE_ECHO_REQUEST
+            &&  $_->l4->type     == NP_ICMPv4_TYPE_ECHO_REPLY) {
                return $_;
             }
-            elsif ($self->type  == NP_ICMPv4_TYPE_TIMESTAMP_REQUEST
-               &&  $_->l4->type == NP_ICMPv4_TYPE_TIMESTAMP_REPLY) {
+            elsif ($self->[$__type] == NP_ICMPv4_TYPE_TIMESTAMP_REQUEST
+               &&  $_->l4->type     == NP_ICMPv4_TYPE_TIMESTAMP_REPLY) {
                return $_;
             }
-            elsif ($self->type  == NP_ICMPv4_TYPE_INFORMATION_REQUEST
-               &&  $_->l4->type == NP_ICMPv4_TYPE_INFORMATION_REPLY) {
+            elsif ($self->[$__type] == NP_ICMPv4_TYPE_INFORMATION_REQUEST
+               &&  $_->l4->type     == NP_ICMPv4_TYPE_INFORMATION_REPLY) {
                return $_;
             }
-            elsif ($self->type  == NP_ICMPv4_TYPE_ADDRESS_MASK_REQUEST
-               &&  $_->l4->type == NP_ICMPv4_TYPE_ADDRESS_MASK_REPLY) {
+            elsif ($self->[$__type] == NP_ICMPv4_TYPE_ADDRESS_MASK_REQUEST
+               &&  $_->l4->type     == NP_ICMPv4_TYPE_ADDRESS_MASK_REPLY) {
                return $_;
             }
          }
       }
-      # DescL4 recv, warning, ay receive a packet targetted at another
+      # DescL4 recv, warning, it may receive a packet targetted at another
       # host, since no L3 headers is kept at D4 for packet matching
       else {
-         if ($self->type  == NP_ICMPv4_TYPE_ECHO_REQUEST
-         &&  $_->l4->type == NP_ICMPv4_TYPE_ECHO_REPLY) {
+         if ($self->[$__type] == NP_ICMPv4_TYPE_ECHO_REQUEST
+         &&  $_->l4->type     == NP_ICMPv4_TYPE_ECHO_REPLY) {
                return $_;
          }
-         elsif ($self->type  == NP_ICMPv4_TYPE_TIMESTAMP_REQUEST
-            &&  $_->l4->type == NP_ICMPv4_TYPE_TIMESTAMP_REPLY) {
+         elsif ($self->[$__type] == NP_ICMPv4_TYPE_TIMESTAMP_REQUEST
+            &&  $_->l4->type     == NP_ICMPv4_TYPE_TIMESTAMP_REPLY) {
             return $_;
          }
-         elsif ($self->type  == NP_ICMPv4_TYPE_INFORMATION_REQUEST
-            &&  $_->l4->type == NP_ICMPv4_TYPE_INFORMATION_REPLY) {
+         elsif ($self->[$__type] == NP_ICMPv4_TYPE_INFORMATION_REQUEST
+            &&  $_->l4->type     == NP_ICMPv4_TYPE_INFORMATION_REPLY) {
             return $_;
          }
-         elsif ($self->type  == NP_ICMPv4_TYPE_ADDRESS_MASK_REQUEST
-            &&  $_->l4->type == NP_ICMPv4_TYPE_ADDRESS_MASK_REPLY) {
+         elsif ($self->[$__type] == NP_ICMPv4_TYPE_ADDRESS_MASK_REQUEST
+            &&  $_->l4->type     == NP_ICMPv4_TYPE_ADDRESS_MASK_REPLY) {
             return $_;
          }
       }
@@ -145,7 +146,11 @@ my $unpackTypes = {
    NP_ICMPv4_TYPE_TIME_EXCEEDED()           => \&_unpackTimeExceed,
 };
 
-sub getDataLength { my $self = shift; $self->data ? length($self->data) : 0 }
+sub getDataLength {
+   my $self = shift;
+   my $data = $self->[$__data];
+   $data ? length($data) : 0;
+}
 
 sub getLength {
    my $self = shift;
@@ -166,7 +171,7 @@ sub getLength {
       NP_ICMPv4_TYPE_TIME_EXCEEDED()           => 8  + $dataLength,
    };
 
-   $hdrLengths->{$self->type} || 0;
+   $hdrLengths->{$self->[$__type]} || 0;
 }
 
 sub _handleType {
@@ -174,10 +179,10 @@ sub _handleType {
    my ($format, $fields, $values) = @_;
 
    if (@$values) {
-      return ($self->SUPER::pack($format, @$values) or undef);
+      return($self->SUPER::pack($format, @$values) || undef);
    }
    else {
-      my @elts = $self->SUPER::unpack($format, $self->payload)
+      my @elts = $self->SUPER::unpack($format, $self->[$__payload])
          or return undef;
       my $n = 0;
       return { map { $_ => $elts[$n++] } @$fields };
@@ -186,7 +191,9 @@ sub _handleType {
 
 sub _packEcho {
    my $self = shift;
-   $self->_handleType('nn', [], [ $self->identifier, $self->sequenceNumber ]);
+   $self->_handleType(
+      'nn', [], [ $self->[$__identifier], $self->[$__sequenceNumber] ]
+   );
 }
 
 sub _unpackEcho {
@@ -195,11 +202,11 @@ sub _unpackEcho {
 
 sub _packTimestamp {
    my $self = shift;
-   $self->_handleType(
-      'nnNNN',
-      [],
-      [ $self->identifier, $self->sequenceNumber, $self->originateTimestamp,
-        $self->receiveTimestamp, $self->transmitTimestamp ],
+   $self->_handleType('nnNNN', [],
+      [ $self->[$__identifier], $self->[$__sequenceNumber],
+        $self->[$__originateTimestamp], $self->[$__receiveTimestamp],
+        $self->[$__transmitTimestamp]
+      ],
    );
 }
 
@@ -218,10 +225,10 @@ sub _unpackInformation { shift->_unpackEcho }
 
 sub _packAddressMask {
    my $self = shift;
-   $self->_handleType(
-      'nnN',
-      [],
-      [ $self->identifier, $self->sequenceNumber, $self->addressMask ],
+   $self->_handleType('nnN', [],
+      [ $self->[$__identifier], $self->[$__sequenceNumber],
+        $self->[$__addressMask]
+      ],
    );
 }
 
@@ -247,7 +254,7 @@ sub _packDestUnreach {
    $self->_handleType(
       'N',
       [],
-      [ $self->unused ],
+      [ $self->[$__unused] ],
    );
 }
 
@@ -266,7 +273,7 @@ sub _packRedirect {
    $self->_handleType(
       'a4',
       [],
-      [ inetAton($self->gateway) ],
+      [ inetAton($self->[$__gateway]) ],
    );
 }
 
@@ -310,23 +317,21 @@ sub _decodeError {
 sub pack {
    my $self = shift;
 
-   $self->raw(
-      $self->SUPER::pack('CCn',
-         $self->type,
-         $self->code,
-         $self->checksum,
-      ),
+   $self->[$__raw] = $self->SUPER::pack('CCn',
+      $self->[$__type],
+      $self->[$__code],
+      $self->[$__checksum],
    ) or return undef;
 
-   my $sub = $packTypes->{$self->type} || \&_decodeError;
+   my $sub = $packTypes->{$self->[$__type]} || \&_decodeError;
    my $raw = $self->$sub or return undef;
 
-   if ($self->data) {
-      $raw .= $self->SUPER::pack('a*', $self->data)
+   if (my $data = $self->[$__data]) {
+      $raw .= $self->SUPER::pack('a*', $data)
          or return undef;
    }
 
-   $self->raw($self->raw. $raw);
+   $self->[$__raw] = $self->[$__raw].$raw;
 
    1;
 }
@@ -335,22 +340,22 @@ sub unpack {
    my $self = shift;
 
    my ($type, $code, $checksum, $payload) =
-      $self->SUPER::unpack('CCS a*', $self->raw)
+      $self->SUPER::unpack('CCS a*', $self->[$__raw])
          or return undef;
 
-   $self->type($type);
-   $self->code($code);
-   $self->checksum($checksum);
-   $self->payload($payload);
+   $self->[$__type]     = $type;
+   $self->[$__code]     = $code;
+   $self->[$__checksum] = $checksum;
+   $self->[$__payload]  = $payload;
 
    # unpack specific ICMPv4 types
-   my $sub = $unpackTypes->{$self->type} || \&_decodeError;
+   my $sub = $unpackTypes->{$self->[$__type]} || \&_decodeError;
    my $href = $self->$sub or return undef;
 
    $self->$_($href->{$_}) for keys %$href;
 
    # payload has been handled by previous chunk of code
-   $self->payload(undef);
+   $self->[$__payload] = undef;
 
    1;
 }
@@ -358,18 +363,18 @@ sub unpack {
 sub computeChecksums {
    my $self = shift;
 
-   my $sub = $packTypes->{$self->type} || \&_decodeError;
+   my $sub = $packTypes->{$self->[$__type]} || \&_decodeError;
    my $raw = $self->$sub or return undef;
 
-   if ($self->data) {
-      $raw .= $self->SUPER::pack('a*', $self->data)
+   if (my $data = $self->[$__data]) {
+      $raw .= $self->SUPER::pack('a*', $data)
          or return undef;
    }
 
-   my $packed = $self->SUPER::pack('CCn', $self->type, $self->code, 0)
+   my $packed = $self->SUPER::pack('CCn', $self->[$__type], $self->[$__code], 0)
       or return undef;
 
-   $self->checksum(inetChecksum($packed. $raw));
+   $self->[$__checksum] = inetChecksum($packed.$raw);
 
    1;
 }
@@ -403,7 +408,7 @@ sub print {
 # Helpers
 #
 
-sub _isType                { shift->type == shift()                      }
+sub _isType                { shift->[$__type] == shift()                 }
 sub isTypeEchoRequest      { shift->_isType(NP_ICMPv4_TYPE_ECHO_REQUEST) }
 sub isTypeEchoReply        { shift->_isType(NP_ICMPv4_TYPE_ECHO_REPLY)   }
 sub isTypeTimestampRequest {

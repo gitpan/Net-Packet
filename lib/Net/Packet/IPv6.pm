@@ -1,5 +1,5 @@
 #
-# $Id: IPv6.pm,v 1.2.2.32 2006/05/13 09:53:59 gomor Exp $
+# $Id: IPv6.pm,v 1.3.2.4 2006/06/11 09:46:30 gomor Exp $
 #
 package Net::Packet::IPv6;
 use strict;
@@ -8,9 +8,8 @@ use warnings;
 require Net::Packet::Layer3;
 our @ISA = qw(Net::Packet::Layer3);
 
-use Carp;
-use Net::Packet qw($Env);
-use Net::Packet::Utils qw(getHostIpv6Addr unpackIntFromNet packIntToNet
+use Net::Packet::Env qw($Env);
+use Net::Packet::Utils qw(unpackIntFromNet packIntToNet
    inet6Aton inet6Ntoa);
 use Net::Packet::Consts qw(:ipv6 :layer);
 
@@ -28,8 +27,10 @@ our @AS = qw(
    src
    dst
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -43,28 +44,25 @@ sub new {
       @_,
    );
 
-   $self->src(getHostIpv6Addr($self->src));
-   $self->dst(getHostIpv6Addr($self->dst));
-
    $self;
 }
 
-sub getLength        { NP_IPv6_HDR_LEN      }
-sub getPayloadLength { shift->payloadLength }
+sub getLength        { NP_IPv6_HDR_LEN           }
+sub getPayloadLength { shift->[$__payloadLength] }
 
 sub _computePayloadLength {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    my $len = 0;
    $len += $frame->l4->getLength if $frame->l4;
    $len += $frame->l7->getLength if $frame->l7;
-   $self->payloadLength($len);
+   $self->[$__payloadLength] = $len;
 }
 
 sub computeLengths {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    $frame->l4->computeLengths($frame) or return undef;
    $self->_computePayloadLength($frame);
@@ -74,19 +72,17 @@ sub computeLengths {
 sub pack {
    my $self = shift;
 
-   my $vtf1 = packIntToNet($self->version,      'C',  0,  4);
-   my $vtf2 = packIntToNet($self->trafficClass, 'C',  4,  8);
-   my $vtf3 = packIntToNet($self->flowLabel,    'N', 12, 20);
+   my $vtf1 = packIntToNet($self->[$__version],      'C',  0,  4);
+   my $vtf2 = packIntToNet($self->[$__trafficClass], 'C',  4,  8);
+   my $vtf3 = packIntToNet($self->[$__flowLabel],    'N', 12, 20);
 
-   $self->raw(
-      $self->SUPER::pack('B32nCCa*a*',
-         $vtf1. $vtf2. $vtf3,
-         $self->payloadLength,
-         $self->nextHeader,
-         $self->hopLimit,
-         inet6Aton($self->src),
-         inet6Aton($self->dst),
-      ),
+   $self->[$__raw] = $self->SUPER::pack('B32nCCa*a*',
+      $vtf1.$vtf2.$vtf3,
+      $self->[$__payloadLength],
+      $self->[$__nextHeader],
+      $self->[$__hopLimit],
+      inet6Aton($self->[$__src]),
+      inet6Aton($self->[$__dst]),
    ) or return undef;
 
    1;
@@ -96,19 +92,19 @@ sub unpack {
    my $self = shift;
 
    my ($vtf, $pl, $nh, $hl, $sa, $da, $payload) =
-      $self->SUPER::unpack('B32nCCa16a16 a*', $self->raw)
+      $self->SUPER::unpack('B32nCCa16a16 a*', $self->[$__raw])
          or return undef;
 
-   $self->version     (unpackIntFromNet($vtf, 'C',  0,  4,  4));
-   $self->trafficClass(unpackIntFromNet($vtf, 'C',  4,  0,  8));
-   $self->flowLabel   (unpackIntFromNet($vtf, 'N', 12, 12, 20));
-   $self->payloadLength($pl);
-   $self->nextHeader($nh);
-   $self->hopLimit($hl);
-   $self->src(inet6Ntoa($sa));
-   $self->dst(inet6Ntoa($da));
+   $self->[$__version]       = unpackIntFromNet($vtf, 'C',  0,  4,  4);
+   $self->[$__trafficClass]  = unpackIntFromNet($vtf, 'C',  4,  0,  8);
+   $self->[$__flowLabel]     = unpackIntFromNet($vtf, 'N', 12, 12, 20);
+   $self->[$__payloadLength] = $pl;
+   $self->[$__nextHeader]    = $nh;
+   $self->[$__hopLimit]      = $hl;
+   $self->[$__src]           = inet6Ntoa($sa);
+   $self->[$__dst]           = inet6Ntoa($da);
 
-   $self->payload($payload);
+   $self->[$__payload] = $payload;
 
    1;
 }
@@ -120,7 +116,7 @@ sub encapsulate {
       #NP_IPv4_PROTOCOL_ICMPv6() => NP_LAYER_ICMPv6(),
    };
 
-   $types->{shift->protocol} || NP_LAYER_UNKNOWN();
+   $types->{shift->[$__nextHeader]} || NP_LAYER_UNKNOWN();
 }
 
 sub print {
@@ -181,7 +177,7 @@ Version of Internet Protocol header.
 
 =item B<trafficClass>
 
-Traffic class field.
+Traffic class field. Was Type of Service in IPv4.
 
 =item B<flowLabel>
 

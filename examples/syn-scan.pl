@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: syn-scan.pl,v 1.1.2.7 2005/05/22 19:41:17 gomor Exp $
+# $Id: syn-scan.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -13,7 +11,7 @@ my %opts;
 getopts('6i:I:p:d:vr:ocfs:F:', \%opts);
 
 die
-"Usage: send-scan.pl -i target [-p ports] [-I source] [-d device] [-v]\n".
+"Usage: $0 -i target [-p ports] [-I source] [-d device] [-v]\n".
 "  -p range  port range to scan (example: 1-1024) (default ~ 1660)\n".
 "  -r n      number of SYN packet try (default: 3)\n".
 "  -s n      time spacing between two probes (default: 150 microseconds)\n".
@@ -25,7 +23,7 @@ die
 ""
    unless $opts{i} || $opts{F};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};
@@ -82,21 +80,23 @@ sub scanOnline {
       family => $opts{6} ? NP_LAYER_IPv6 : NP_LAYER_IPv4,
    );
 
+   my $filter;
    if ($opts{6}) {
-      $Env->filter("(tcp and src host @{[getHostIpv6Addr($opts{i})]}".
-                   " and dst host @{[$Env->ip6]})".
-                   " or (icmp6 and dst host @{[$Env->ip6]})");
+      $filter = "(tcp and src host @{[getHostIpv6Addr($opts{i})]}".
+                " and dst host @{[$Env->ip6]})".
+                " or (icmp6 and dst host @{[$Env->ip6]})";
    }
    else {
-      $Env->filter("(tcp and src host @{[getHostIpv4Addr($opts{i})]}".
-                   " and dst host @{[$Env->ip]})".
-                   " or (icmp and dst host @{[$Env->ip]})");
+      $filter = "(tcp and src host @{[getHostIpv4Addr($opts{i})]}".
+                " and dst host @{[$Env->ip]})".
+                " or (icmp and dst host @{[$Env->ip]})";
    }
 
    my $dump = Net::Packet::Dump->new(
-      file            => "netpacket-syn-scan-$opts{i}.pcap",
-      overwrite       => 1,
-      unlinkOnDestroy => 0,
+      file          => "netpacket-syn-scan-$opts{i}.pcap",
+      filter        => $filter,
+      overwrite     => 1,
+      unlinkOnClean => 0,
    );
 
    my @out;
@@ -106,7 +106,7 @@ sub scanOnline {
    for (1..$opts{r}) {
       do { usleep($opts{s}); $_->reSend } for @out;
 
-      until ($Env->dump->timeout) {
+      until ($dump->timeout) {
          $_->recv for @out;
 
          my $notAllReceived;
@@ -114,7 +114,7 @@ sub scanOnline {
          last unless $notAllReceived;
       }
 
-      $Env->dump->timeout(0);
+      $dump->timeoutReset;
    }
 
    for (@out) {
@@ -138,6 +138,8 @@ sub scanOnline {
       }
    }
 
+   $dump->stop;
+
    printResult(\@open,       'open')     if $opts{o};
    printResult(\@closed,     'closed')   if $opts{c};
    printResult(\@filtered,   'filtered') if $opts{f};
@@ -146,12 +148,13 @@ sub scanOnline {
 
 sub scanOffline {
    my $dump = Net::Packet::Dump->new(
-      file            => $opts{F},
-      unlinkOnDestroy => 0,
-      callStart       => 0,
+      mode          => NP_DUMP_MODE_OFFLINE,
+      file          => $opts{F},
+      unlinkOnClean => 0,
    );
-
-   $dump->analyze;
+   $dump->start;
+   $dump->nextAll;
+   $dump->stop;
 
    for ($dump->frames) {
       next unless $_->isTcp;

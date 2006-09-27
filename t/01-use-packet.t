@@ -1,6 +1,6 @@
 use Test;
 BEGIN { plan(tests => 1) }
 
-use Net::Pkt;
+use Net::Packet;
 
 ok(1);

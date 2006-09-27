@@ -1,5 +1,5 @@
 #
-# $Id: ETH.pm,v 1.2.2.32 2006/05/13 09:53:59 gomor Exp $
+# $Id: ETH.pm,v 1.3.2.4 2006/06/04 13:22:08 gomor Exp $
 #
 package Net::Packet::ETH;
 use strict;
@@ -12,7 +12,7 @@ BEGIN {
    *length = \&type;
 }
 
-use Net::Packet qw($Env);
+use Net::Packet::Env qw($Env);
 use Net::Packet::Utils qw(convertMac);
 use Net::Packet::Consts qw(:eth :layer);
 
@@ -21,8 +21,10 @@ our @AS = qw(
    dst
    type
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -32,8 +34,8 @@ sub new {
       @_,
    );
 
-   $self->src(lc $self->src) if $self->src;
-   $self->dst(lc $self->dst) if $self->dst;
+   $self->[$__src] = lc($self->[$__src]) if $self->[$__src];
+   $self->[$__dst] = lc($self->[$__dst]) if $self->[$__dst];
 
    $self;
 }
@@ -43,10 +45,10 @@ sub getLength { NP_ETH_HDR_LEN }
 sub pack {
    my $self = shift;
 
-   (my $dst = $self->dst) =~ s/://g;
-   (my $src = $self->src) =~ s/://g;
+   (my $dst = $self->[$__dst]) =~ s/://g;
+   (my $src = $self->[$__src]) =~ s/://g;
 
-   $self->raw($self->SUPER::pack('H12H12n', $dst, $src, $self->type))
+   $self->[$__raw] = $self->SUPER::pack('H12H12n', $dst, $src, $self->[$__type])
       or return undef;
 
    1;
@@ -56,14 +58,14 @@ sub unpack {
    my $self = shift;
 
    my ($dst, $src, $type, $payload) =
-      $self->SUPER::unpack('H12H12n a*', $self->raw)
+      $self->SUPER::unpack('H12H12n a*', $self->[$__raw])
          or return undef;
 
-   $self->dst(convertMac($dst));
-   $self->src(convertMac($src));
+   $self->[$__dst] = convertMac($dst);
+   $self->[$__src] = convertMac($src);
 
-   $self->type($type);
-   $self->payload($payload);
+   $self->[$__type]    = $type;
+   $self->[$__payload] = $payload;
 
    1;
 }
@@ -162,7 +164,7 @@ The length of the payload when this layer is a 802.3 one. This is the same attri
 Object constructor. You can pass attributes that will overwrite default ones.
 Default values:
 
-src:         $Net::Packet::Env->mac (see B<Net::Packet::Env>)
+src:         $Env->mac (see B<Net::Packet::Env>)
 
 dst:         NP_ETH_ADDR_BROADCAST
 

@@ -1,5 +1,5 @@
 #
-# $Id: VLAN.pm,v 1.1.2.9 2006/05/13 09:53:59 gomor Exp $
+# $Id: VLAN.pm,v 1.2.2.3 2006/06/04 13:37:07 gomor Exp $
 #
 package Net::Packet::VLAN;
 use strict;
@@ -8,9 +8,9 @@ use warnings;
 require Net::Packet::Layer3;
 our @ISA = qw(Net::Packet::Layer3);
 
-use Net::Packet qw($Env);
 use Net::Packet::Consts qw(:vlan :layer);
 require Net::Packet::Frame;
+require Bit::Vector;
 
 our @AS = qw(
    priority
@@ -19,8 +19,10 @@ our @AS = qw(
    type
    frame
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(
@@ -36,27 +38,23 @@ sub new {
 
 sub getLength {
    my $self = shift;
-   do { return length($self->frame) + NP_VLAN_HDR_LEN } if $self->frame;
+   my $frame = $self->[$__frame];
+   return(length($frame->raw) + NP_VLAN_HDR_LEN) if $frame;
    NP_VLAN_HDR_LEN;
 }
-
-require Bit::Vector;
 
 sub pack {
    my $self = shift;
 
-   my $v3  = Bit::Vector->new_Dec(3,  $self->priority);
-   my $v1  = Bit::Vector->new_Dec(1,  $self->cfi);
-   my $v12 = Bit::Vector->new_Dec(12, $self->id);
-
+   my $v3  = Bit::Vector->new_Dec(3,  $self->[$__priority]);
+   my $v1  = Bit::Vector->new_Dec(1,  $self->[$__cfi]);
+   my $v12 = Bit::Vector->new_Dec(12, $self->[$__id]);
    my $v16 = $v3->Concat_List($v1, $v12);
 
-   $self->raw(
-      $self->SUPER::pack('nna*',
-         $v16->to_Dec,
-         $self->type,
-         $self->frame->raw,
-      ),
+   $self->[$__raw] = $self->SUPER::pack('nna*',
+      $v16->to_Dec,
+      $self->[$__type],
+      $self->[$__frame]->raw,
    ) or return undef;
 
    1;
@@ -66,17 +64,16 @@ sub unpack {
    my $self = shift;
 
    my ($pCfiId, $type, $payload) =
-      $self->SUPER::unpack('nn a*', $self->raw)
+      $self->SUPER::unpack('nn a*', $self->[$__raw])
          or return undef;
 
    my $v16 = Bit::Vector->new_Dec(16, $pCfiId);
 
-   $self->priority($v16->Chunk_Read(3, 13));
-   $self->cfi     ($v16->Chunk_Read(1, 12));
-   $self->id      ($v16->Chunk_Read(12, 0));
-   $self->type    ($type);
-
-   $self->frame(Net::Packet::Frame->new(raw => $payload));
+   $self->[$__priority] = $v16->Chunk_Read(3, 13);
+   $self->[$__cfi]      = $v16->Chunk_Read(1, 12);
+   $self->[$__id]       = $v16->Chunk_Read(12, 0);
+   $self->[$__type]     = $type;
+   $self->[$__frame]    = Net::Packet::Frame->new(raw => $payload);
 
    1;
 }
@@ -94,7 +91,7 @@ sub print {
 # Helpers
 #
 
-sub _isType    { shift->type == shift()                           }
+sub _isType    { shift->[$__type] == shift()                      }
 sub isTypeArp  { shift->_isType(NP_VLAN_TYPE_ARP)                 }
 sub isTypeIpv4 { shift->_isType(NP_VLAN_TYPE_IPv4)                }
 sub isTypeIpv6 { shift->_isType(NP_VLAN_TYPE_IPv6)                }
@@ -110,7 +107,7 @@ Net::Packet::VLAN - 802.1Q layer 3 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet qw($Env);
+   use Net::Packet::Env qw($Env);
    use Net::Packet::VLAN;
 
    # Load needed constants

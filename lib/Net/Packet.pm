@@ -1,23 +1,54 @@
 #
-# $Id: Packet.pm,v 1.1.2.25 2006/05/13 09:47:02 gomor Exp $
+# $Id: Packet.pm,v 1.2.2.6 2006/09/27 15:29:17 gomor Exp $
 #
 package Net::Packet;
-
-require v5.6.1;
-
 use strict;
 use warnings;
 
-require Exporter;
+require v5.6.1;
 
+our $VERSION = '3.00_01';
+
+require Exporter;
 our @ISA = qw(Exporter);
 
-our @EXPORT_OK = qw($Env);
+use Net::Packet::Env    qw($Env);
+use Net::Packet::Utils  qw(:all);
+use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :vlan :null :ipv4
+   :ipv6 :tcp :udp :icmpv4);
 
-our $VERSION = '2.22';
+require Net::Packet::Dump;
 
-require Net::Packet::Env;
-our $Env = Net::Packet::Env->new;
+require Net::Packet::DescL2;
+require Net::Packet::DescL3;
+require Net::Packet::DescL4;
+
+require Net::Packet::Frame;
+require Net::Packet::ETH;
+require Net::Packet::IPv4;
+require Net::Packet::IPv6;
+require Net::Packet::VLAN;
+require Net::Packet::ARP;
+require Net::Packet::TCP;
+require Net::Packet::UDP;
+require Net::Packet::ICMPv4;
+require Net::Packet::NULL;
+require Net::Packet::RAW;
+require Net::Packet::SLL;
+
+our @EXPORT = (
+   @Net::Packet::Env::EXPORT_OK,
+   @Net::Packet::Utils::EXPORT_OK,
+   @Net::Packet::Consts::EXPORT_OK,
+);
+
+END {
+   if ($Env->dump) {
+      $Env->dump->stop if $Env->dump->isRunning;
+      $Env->dump->clean;
+   }
+   1;
+}
 
 1;
 
@@ -81,21 +112,19 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
 
 =head1 SYNOPSIS
 
-   # Load main module, it also initializes a Net::Packet::Env object
-   use Net::Packet qw($Env);
+   # Load all modules, it also initializes a Net::Packet::Env object, 
+   # and imports all utility subs and constances in current namespace
+   use Net::Packet;
 
    # Build IPv4 header
-   use Net::Packet::IPv4;
    my $ip = Net::Packet::IPv4->new(dst => '192.168.0.1');
 
    # Build TCP header
-   use Net::Packet::TCP;
    my $tcp = Net::Packet::TCP->new(dst => 22);
 
    # Assemble frame
    # It will also open a Net::Packet::DescL3 descriptor
    # and a Net::Packet::Dump object
-   use Net::Packet::Frame;
    my $frame = Net::Packet::Frame->new(l3 => $ip, l4 => $tcp);
 
    $frame->send;

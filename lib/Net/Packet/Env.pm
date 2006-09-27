@@ -1,76 +1,122 @@
 #
-# $Id: Env.pm,v 1.1.2.22 2006/05/13 09:47:02 gomor Exp $
+# $Id: Env.pm,v 1.2.2.8 2006/06/04 13:45:18 gomor Exp $
 #
 package Net::Packet::Env;
 use strict;
 use warnings;
 
-require Class::Gomor::Hash;
-our @ISA = qw(Class::Gomor::Hash);
+require Exporter;
+require Class::Gomor::Array;
+our @ISA = qw(Exporter Class::Gomor::Array);
+our @EXPORT_OK = qw($Env);
 
-use Net::Packet::Utils qw(autoDev autoMac autoIp autoIp6 getHostIpv4Addr
-   getHostIpv6Addr);
+use Net::Libdnet;
+require Net::IPv6Addr;
 
 our @AS = qw(
    dev
-   mac
-   link
-   desc
-   dump
-   promisc
-   filter
-   err
-   errString
-);
-
-our @AO = qw(
    ip
    ip6
+   mac
+   desc
+   dump
+   err
+   errString
+   noFrameAutoDesc
+   noFrameAutoDump
+   noDumpAutoSet
+   noDescAutoSet
+   _dnet
+);
+our @AO = qw(
    debug
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
+
+our $Env = __PACKAGE__->new;
 
 sub new {
    my $self = shift->SUPER::new(
-      promisc   => 0,
-      debug     => 0,
-      err       => 0,
-      errString => "",
+      debug           => 0,
+      noFrameAutoDesc => 0,
+      noFrameAutoDump => 0,
+      noDumpAutoSet   => 0,
+      noDescAutoSet   => 0,
+      err             => 0,
+      errString       => '',
       @_,
    );
 
-   unless ($self->dev) {
-      my $dev = autoDev();
-      $self->dev(autoDev()) if $dev;
-   }
+   $self->[$__dev]
+      ? do { $self->[$__dev] = $self->getDevInfoFor($self->[$__dev]) }
+      : do { $self->[$__dev] = $self->getDevInfo                     };
 
-   if ($self->dev) {
-      $self->mac(autoMac($self->dev)) unless $self->mac;
-      $self->ip(autoIp($self->dev))   unless $self->ip;
-      $self->ip6(autoIp6($self->dev)) unless $self->ip6;
-   }
+   $self->[$__mac] = $self->getMac unless $self->[$__mac];
+   $self->[$__ip]  = $self->getIp  unless $self->[$__ip];
+   $self->[$__ip6] = $self->getIp6 unless $self->[$__ip6];
 
    $self;
 }
 
+sub getDevInfo {
+   my $self = shift;
+   # By default, we take outgoing device to Internet
+   $self->[$___dnet] = Net::Libdnet::intf_get_dst(shift() || '1.1.1.1');
+   $self->getDev;
+}
+
+sub getDevInfoFor {
+   my $self = shift;
+   $self->[$___dnet] = Net::Libdnet::intf_get(shift());
+   $self->getDev;
+}
+
+sub updateDevInfo {
+   my $self = shift;
+   $self->getDevInfo(shift());
+   $self->[$__dev] = $self->getDev;
+   $self->[$__ip]  = $self->getIp;
+   $self->[$__ip6] = $self->getIp6;
+   $self->[$__mac] = $self->getMac;
+}
+
+sub getDev { shift->[$___dnet]->{name} || (($^O eq 'linux') ? 'lo' : 'lo0') }
+
+sub getMac { shift->[$___dnet]->{link_addr} || 'ff:ff:ff:ff:ff:ff' }
+
+sub getIp {
+   my $ip = shift->[$___dnet]->{addr} || '127.0.0.1';
+   $ip =~ s/\/\d+$//;
+   $ip;
+}
+
+sub _getIp6 {
+   my $self = shift;
+   my $dev = $self->[$__dev];
+   my $mac = $self->[$__mac];
+   my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
+   $buf =~ s/$dev//;
+   $buf =~ s/$mac//i;
+   my ($ip6) = ($buf =~ /((?:[a-f0-9]{1,4}(?::|%|\/){1,2})+)/i); # XXX: better
+   if ($ip6) {
+      $ip6 =~ s/%|\///g;
+      $ip6 = lc($ip6);
+   }
+   ($ip6 && Net::IPv6Addr::ipv6_chkip($ip6) && $ip6) || '::1';
+}
+
+sub getIp6 {
+   my $self = shift;
+   $self->_getIp6($self->[$__dev]);
+}
+
 sub debug {
    my $self = shift;
-   @_ ? $self->{debug} = $Class::Gomor::Debug = shift
-      : $self->{debug};
-}
-
-sub ip {
-   my $self = shift;
-   @_ ? $self->{ip} = getHostIpv4Addr(shift)
-      : $self->{ip};
-}
-
-sub ip6 {
-   my $self = shift;
-   my $ip6 = shift;
-   $ip6 ? $self->{ip6} = getHostIpv6Addr($ip6)
-        : $self->{ip6};
+   @_ ? do { $self->[$__debug] = $Class::Gomor::Debug = shift }
+      : $self->[$__debug];
 }
 
 1;

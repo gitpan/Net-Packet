@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: arp-reply.pl,v 1.2.2.5 2005/05/22 19:09:31 gomor Exp $
+# $Id: arp-reply.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,15 +9,16 @@ use Getopt::Std;
 my %opts;
 getopts('m:M:i:a:d:v', \%opts);
 
-die "Usage: arp-reply.pl -i dstIp -a isAtMac [-M srcMac] [-m dstMac] ".
+die "Usage: $0 -i dstIp -a isAtMac [-M srcMac] [-m dstMac] ".
     "(or will broadcast) [-d device] [-v]\n"
    unless $opts{i} && $opts{a};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->mac($opts{M}) if $opts{M};
 $Env->debug(3)      if $opts{v};
+$Env->noFrameAutoDump(1);
 
 my $eth = Net::Packet::ETH->new(
    type => NP_ETH_TYPE_ARP,

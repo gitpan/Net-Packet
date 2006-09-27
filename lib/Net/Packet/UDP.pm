@@ -1,5 +1,5 @@
 #
-# $Id: UDP.pm,v 1.2.2.38 2006/05/13 09:53:59 gomor Exp $
+# $Id: UDP.pm,v 1.3.2.1 2006/05/01 17:36:05 gomor Exp $
 #
 package Net::Packet::UDP;
 use strict;
@@ -17,8 +17,10 @@ our @AS = qw(
    length
    checksum
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    shift->SUPER::new(
@@ -31,8 +33,8 @@ sub new {
 }
 
 sub recv {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    my $env = $frame->env;
 
@@ -40,14 +42,9 @@ sub recv {
       return $_ if $_->timestamp ge $frame->timestamp;
    }
 
-   my $l2Key = 'all';
-   $l2Key = $frame->l2->getKeyReverse($frame) if $frame->l2;
-
-   my $l3Key = 'all';
-   $l3Key = $frame->l3->is.':'.$frame->l3->src if $frame->l3;
-
-   my $l4Key = 'all';
-   $l4Key = 'ICMP' if $frame->l4;
+   my $l2Key = ($frame->l2 && $frame->l2->getKeyReverse($frame))  || 'all';
+   my $l3Key = ($frame->l3 && $frame->l3->is.':'.$frame->l3->src) || 'all';
+   my $l4Key = ($frame->l4 && 'ICMP')                             || 'all';
 
    my $href = $env->dump->framesSorted;
    for (@{$href->{$l2Key}{$l3Key}{$l4Key}}) {
@@ -65,13 +62,11 @@ sub recv {
 sub pack {
    my $self = shift;
 
-   $self->raw(
-      $self->SUPER::pack('nnnn',
-         $self->src,
-         $self->dst,
-         $self->length,
-         $self->checksum,
-      ),
+   $self->[$__raw] = $self->SUPER::pack('nnnn',
+      $self->[$__src],
+      $self->[$__dst],
+      $self->[$__length],
+      $self->[$__checksum],
    ) or return undef;
 
    1;
@@ -81,49 +76,50 @@ sub unpack {
    my $self = shift;
 
    my ($src, $dst, $len, $checksum, $payload) =
-      $self->SUPER::unpack('nnnn a*', $self->raw)
+      $self->SUPER::unpack('nnnn a*', $self->[$__raw])
          or return undef;
 
-   $self->src($src);
-   $self->dst($dst);
-   $self->length($len);
-   $self->checksum($checksum);
-   $self->payload($payload);
+   $self->[$__src]      = $src;
+   $self->[$__dst]      = $dst;
+   $self->[$__length]   = $len;
+   $self->[$__checksum] = $checksum;
+   $self->[$__payload]  = $payload;
 
    1;
 }
 
-sub getLength        { NP_UDP_HDR_LEN                 }
+sub getLength { NP_UDP_HDR_LEN }
+
 sub getPayloadLength {
    my $self = shift;
-   $self->length > $self->getLength
-      ? $self->length - $self->getLength
-      : 0;
+   my $len  = $self->[$__length];
+   my $gLen = $self->getLength;
+   ($len > $gLen) ? do { $len - $gLen } : 0;
 }
 
 sub _computeTotalLength {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    # Autocompute header length if not user specified
-   return if $self->length;
+   return if $self->[$__length];
 
    my $totalLength = $self->getLength;
    $totalLength += $frame->l7->getLength if $frame->l7;
-   $self->length($totalLength);
+   $self->[$__length] = $totalLength;
 }
 
 sub computeLengths {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    $self->_computeTotalLength($frame);
    1;
 }
 
 sub computeChecksums {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
    my $env = $frame->env;
 
@@ -135,7 +131,7 @@ sub computeChecksums {
             inetAton($frame->l3->dst),
             0,
             $frame->l3->protocol,
-            $self->length,
+            $self->[$__length],
          ) or return undef;
       }
       elsif ($frame->isIpv6) {
@@ -175,10 +171,10 @@ sub computeChecksums {
    }
 
    $phpkt .= $self->SUPER::pack('nnnn',
-      $self->src,
-      $self->dst,
-      $self->length,
-      $self->checksum,
+      $self->[$__src],
+      $self->[$__dst],
+      $self->[$__length],
+      $self->[$__checksum],
    ) or return undef;
 
    if ($frame->l7) {
@@ -186,21 +182,21 @@ sub computeChecksums {
          or return undef;
    }
 
-   $self->checksum(inetChecksum($phpkt));
+   $self->[$__checksum] = inetChecksum($phpkt);
 
    1;
 }
 
-sub encapsulate { shift->payload ? NP_LAYER_7 : NP_LAYER_NONE }
+sub encapsulate { shift->[$__payload] ? NP_LAYER_7 : NP_LAYER_NONE }
 
 sub getKey {
    my $self = shift;
-   $self->is.':'.$self->src.'-'.$self->dst;
+   $self->is.':'.$self->[$__src].'-'.$self->[$__dst];
 }
 
 sub getKeyReverse {
    my $self = shift;
-   $self->is.':'.$self->dst.'-'.$self->src;
+   $self->is.':'.$self->[$__dst].'-'.$self->[$__src];
 }
 
 sub print {

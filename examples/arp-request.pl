@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: arp-request.pl,v 1.2.2.8 2005/05/22 19:09:31 gomor Exp $
+# $Id: arp-request.pl,v 1.3.2.2 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,11 +9,11 @@ use Getopt::Std;
 my %opts;
 getopts('i:I:M:d:vt', \%opts);
 
-die "Usage: arp-request.pl -i dstIp [-I srcIp] [-M srcMac] [-d device] ".
+die "Usage: $0 -i dstIp [-I srcIp] [-M srcMac] [-d device] ".
     "[-v] [-t timeout]\n"
    unless $opts{i};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};
@@ -33,18 +31,13 @@ my $arp = Net::Packet::ARP->new(
 
 my $frame = Net::Packet::Frame->new(l2 => $eth, l3 => $arp);
 
-my $dump = Net::Packet::Dump->new(
-   filter        => $frame->getFilter,
-   timeoutOnNext => $opts{t} ? $opts{t} : 3,
-);
-
 print "Request:\n";
 print $frame->l2->print, "\n";
 print $frame->l3->print, "\n";
 print "padding: ", unpack('H*', $frame->padding), "\n";
 $frame->send;
 
-until ($dump->timeout) {
+until ($Env->dump->timeout) {
    if ($frame->recv) {
       print "\nReply:\n";
       print $frame->reply->l2->print, "\n";

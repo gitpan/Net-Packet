@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: udp-send.pl,v 1.2.2.7 2005/05/22 19:09:31 gomor Exp $
+# $Id: udp-send.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,10 +9,10 @@ use Getopt::Std;
 my %opts;
 getopts('i:p:d:I:v', \%opts);
 
-die "Usage: udp-send.pl -i dstIp -p dstPort [-d device] [-I srcIp] [-v]\n"
+die "Usage: $0 -i dstIp -p dstPort [-d device] [-I srcIp] [-v]\n"
    unless $opts{i} && $opts{p};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};

@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: chaos-query.pl,v 1.2.2.7 2005/05/22 19:09:31 gomor Exp $
+# $Id: chaos-query.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,10 +9,10 @@ use Getopt::Std;
 my %opts;
 getopts('d:i:I:v', \%opts);
 
-die "Usage: chaos-query.pl -i dstIp [-I srcIp] [-d device] [-v]\n"
+die "Usage: $0 -i dstIp [-I srcIp] [-d device] [-v]\n"
    unless $opts{i};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};

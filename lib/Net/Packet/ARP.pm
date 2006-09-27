@@ -1,5 +1,5 @@
 #
-# $Id: ARP.pm,v 1.2.2.37 2006/05/13 09:53:59 gomor Exp $
+# $Id: ARP.pm,v 1.3.2.5 2006/06/04 13:35:23 gomor Exp $
 #
 package Net::Packet::ARP;
 use strict;
@@ -7,10 +7,6 @@ use warnings;
 
 require Net::Packet::Layer3;
 our @ISA = qw(Net::Packet::Layer3);
-
-use Net::Packet qw($Env);
-use Net::Packet::Utils qw(getHostIpv4Addr convertMac inetAton inetNtoa);
-use Net::Packet::Consts qw(:arp :layer);
 
 our @AS = qw(
    hType
@@ -23,8 +19,14 @@ our @AS = qw(
    srcIp
    dstIp
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
+
+use Net::Packet::Env qw($Env);
+use Net::Packet::Utils qw(convertMac inetAton inetNtoa);
+use Net::Packet::Consts qw(:arp :layer);
 
 sub new {
    my $self = shift->SUPER::new(
@@ -40,11 +42,8 @@ sub new {
       @_,
    );
 
-   $self->srcIp(getHostIpv4Addr($self->srcIp));
-   $self->dstIp(getHostIpv4Addr($self->dstIp));
-
-   $self->src(lc($self->src)) if $self->src;
-   $self->dst(lc($self->dst)) if $self->dst;
+   $self->[$__src] = lc($self->[$__src]) if $self->[$__src];
+   $self->[$__dst] = lc($self->[$__dst]) if $self->[$__dst];
 
    $self;
 }
@@ -54,21 +53,19 @@ sub getLength { NP_ARP_HDR_LEN }
 sub pack {
    my $self = shift;
 
-   (my $srcMac = $self->src) =~ s/://g;
-   (my $dstMac = $self->dst) =~ s/://g;
+   (my $srcMac = $self->[$__src]) =~ s/://g;
+   (my $dstMac = $self->[$__dst]) =~ s/://g;
 
-   $self->raw(
-      $self->SUPER::pack('nnUUnH12a4H12a4',
-         $self->hType,
-         $self->pType,
-         $self->hSize,
-         $self->pSize,
-         $self->opCode,
-         $srcMac,
-         inetAton($self->srcIp),
-         $dstMac,
-         inetAton($self->dstIp),
-      ),
+   $self->[$__raw] = $self->SUPER::pack('nnUUnH12a4H12a4',
+      $self->[$__hType],
+      $self->[$__pType],
+      $self->[$__hSize],
+      $self->[$__pSize],
+      $self->[$__opCode],
+      $srcMac,
+      inetAton($self->[$__srcIp]),
+      $dstMac,
+      inetAton($self->[$__dstIp]),
    ) or return undef;
 
    1;
@@ -78,30 +75,30 @@ sub unpack {
    my $self = shift;
 
    my ($hType, $pType, $hSize, $pSize, $opCode, $srcMac, $srcIp, $dstMac,
-      $dstIp) = $self->SUPER::unpack('nnUUnH12a4H12a4', $self->raw)
+      $dstIp) = $self->SUPER::unpack('nnUUnH12a4H12a4', $self->[$__raw])
          or return undef;
 
-   $self->hType($hType);
-   $self->pType($pType);
-   $self->hSize($hSize);
-   $self->pSize($pSize);
-   $self->opCode($opCode);
-   $self->src(convertMac($srcMac));
-   $self->srcIp(inetNtoa($srcIp));
-   $self->dst(convertMac($dstMac));
-   $self->dstIp(inetNtoa($dstIp));
+   $self->[$__hType]  = $hType;
+   $self->[$__pType]  = $pType;
+   $self->[$__hSize]  = $hSize;
+   $self->[$__pSize]  = $pSize;
+   $self->[$__opCode] = $opCode;
+   $self->[$__src]    = convertMac($srcMac);
+   $self->[$__srcIp]  = inetNtoa($srcIp);
+   $self->[$__dst]    = convertMac($dstMac);
+   $self->[$__dstIp]  = inetNtoa($dstIp);
 
    1;
 }
 
 sub recv {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
-   my $src    = $self->src;
-   my $srcIp  = $self->srcIp;
-   my $dstIp  = $self->dstIp;
-   my $opCode = $self->opCode;
+   my $src    = $self->[$__src];
+   my $srcIp  = $self->[$__srcIp];
+   my $dstIp  = $self->[$__dstIp];
+   my $opCode = $self->[$__opCode];
 
    for ($frame->env->dump->framesFor($frame)) {
       if ($opCode == NP_ARP_OPCODE_REQUEST) {
@@ -140,7 +137,7 @@ sub print {
 # Helpers
 #
 
-sub _isOpCode { shift->opCode == shift                  }
+sub _isOpCode { shift->[$__opCode] == shift             }
 sub isRequest { shift->_isOpCode(NP_ARP_OPCODE_REQUEST) }
 sub isReply   { shift->_isOpCode(NP_ARP_OPCODE_REPLY)   }
 

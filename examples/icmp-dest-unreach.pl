@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: icmp-dest-unreach.pl,v 1.2.2.4 2005/05/22 19:09:31 gomor Exp $
+# $Id: icmp-dest-unreach.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,14 +9,15 @@ use Getopt::Std;
 my %opts;
 getopts('i:d:I:v', \%opts);
 
-die "Usage: icmp-dest-unreach.pl -i dstIp [-d device] [-I srcIp] [-v]\n"
+die "Usage: $0 -i dstIp [-d device] [-I srcIp] [-v]\n"
    unless $opts{i};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};
 $Env->debug(3)      if $opts{v};
+$Env->noFrameAutoDump(1);
 
 my $ip = Net::Packet::IPv4->new(
    protocol => NP_IPv4_PROTOCOL_ICMPv4,

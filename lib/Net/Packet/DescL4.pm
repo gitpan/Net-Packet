@@ -1,5 +1,5 @@
 #
-# $Id: DescL4.pm,v 1.2.2.27 2006/05/13 09:53:59 gomor Exp $
+# $Id: DescL4.pm,v 1.3.2.4 2006/06/04 13:56:23 gomor Exp $
 #
 package Net::Packet::DescL4;
 use strict;
@@ -8,9 +8,9 @@ use Carp;
 
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);
+__PACKAGE__->cgBuildIndices;
 
 use Net::Packet::Consts qw(:desc :layer);
-use Net::Packet::Utils qw(getHostIpv4Addr getHostIpv6Addr);
 
 use Socket;
 use Socket6;
@@ -22,15 +22,8 @@ sub new {
       @_,
    );
 
-   croak("@{[(caller(0))[3]]}: you must pass at least `target' parameter\n")
+   confess("@{[(caller(0))[3]]}: you must pass `target' parameter\n")
       unless $self->target;
-
-   if ($self->isFamilyIpv4) {
-      $self->target(getHostIpv4Addr($self->target));
-   }
-   elsif ($self->isFamilyIpv6) {
-      $self->target(getHostIpv6Addr($self->target));
-   }
 
    my $families = {
       NP_LAYER_IPv4() => AF_INET(),

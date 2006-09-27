@@ -1,52 +1,53 @@
 #
-# $Id: Desc.pm,v 1.2.2.29 2006/05/13 09:53:59 gomor Exp $
+# $Id: Desc.pm,v 1.3.2.6 2006/06/04 13:44:36 gomor Exp $
 #
 package Net::Packet::Desc;
 use strict;
 use warnings;
 
 require Exporter;
-require Class::Gomor::Hash;
-our @ISA = qw(Exporter Class::Gomor::Hash);
+require Class::Gomor::Array;
+our @ISA = qw(Exporter Class::Gomor::Array);
 
-use Net::Packet qw($Env);
+use Net::Packet::Env qw($Env);
 use Net::Packet::Consts qw(:desc);
 
 our @AS = qw(
-   env
-   noEnvSet
+   dev
+   ip
+   ip6
+   mac
    target
    protocol
    family
    _io
    _sockaddr
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    my $self = shift->SUPER::new(
-      env      => $Env,
-      noEnvSet => 0,
+      dev => $Env->dev,
+      ip  => $Env->ip,
+      ip6 => $Env->ip6,
+      mac => $Env->mac,
       @_,
    );
 
-   my $env = $self->env;
+   $self->cgDebugPrint(1, "dev: [@{[$self->dev]}]\n".
+                          "ip:  [@{[$self->ip]}]\n".
+                          "mac: [@{[$self->mac]}]");
+   $self->cgDebugPrint(1, "ip6: [@{[$self->ip6]}]")
+      if $self->ip6;
 
-   $self->cgDebugPrint(1, "Dev: [@{[$env->dev]}]\n".
-                          "Ip:  [@{[$env->ip]}]\n".
-                          "Mac: [@{[$env->mac]}]");
-   $self->cgDebugPrint(1, "Ip6: [@{[$env->ip6]}]")
-      if $env->ip6;
-
-   $env->desc($self) unless $self->noEnvSet;
+   $Env->desc($self) unless $Env->noDescAutoSet;
 
    $self;
 }
 
 sub send   { shift->_io->send(shift()) }
 sub close  { shift->_io->close         }
-sub ESTROY { shift->_io->DESTROY       }
 
 #
 # Helpers

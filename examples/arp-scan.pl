@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: arp-scan.pl,v 1.2.2.7 2005/05/22 19:07:13 gomor Exp $
+# $Id: arp-scan.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -11,21 +9,19 @@ use Getopt::Std;
 my %opts;
 getopts('d:I:M:n:vt:kr:', \%opts);
 
-die "Usage: arp-scan.pl [-d device] [-I srcIp] [-M srcMac] [-v] ".
+die "Usage: $0 [-d device] [-I srcIp] [-M srcMac] [-v] ".
     "[-t timeout] [-k] [-r number] -n C.SUB.NET\n"
    unless $opts{n};
 
-die "Invalid C class: $opts{n}\n" unless $opts{n} =~ /^\d+\.\d+\.\d+/;
+die("Invalid C class: $opts{n}\n") unless $opts{n} =~ /^\d+\.\d+\.\d+/;
 $opts{n} =~ s/^(\d+\.\d+\.\d+).*$/$1/;
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->dev($opts{d}) if $opts{d};
 $Env->ip ($opts{I}) if $opts{I};
 $Env->mac($opts{M}) if $opts{M};
 $Env->debug(3)      if $opts{v};
-
-$Env->filter("arp and dst host @{[$Env->ip]}");
 
 my @frames;
 for (1..254) {
@@ -38,6 +34,8 @@ for (1..254) {
    );
    push @frames, $frame;
 }
+
+$Env->dump->filter("arp and dst host @{[$Env->ip]}");
 
 my $times = $opts{r} ? $opts{r} : 3;
 for (1..$times) {

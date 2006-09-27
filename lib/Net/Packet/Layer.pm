@@ -1,13 +1,13 @@
 #
-# $Id: Layer.pm,v 1.2.2.27 2006/05/13 09:53:59 gomor Exp $
+# $Id: Layer.pm,v 1.3.2.2 2006/05/25 12:17:48 gomor Exp $
 #
 package Net::Packet::Layer;
 use strict;
 use warnings;
 use Carp;
 
-require Class::Gomor::Hash;
-our @ISA = qw(Class::Gomor::Hash);
+require Class::Gomor::Array;
+our @ISA = qw(Class::Gomor::Array);
 
 use Net::Packet::Consts qw(:layer);
 
@@ -15,7 +15,7 @@ our @AS = qw(
    raw
    payload
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {

@@ -1,9 +1,18 @@
 Revision history for Perl extension Net::Packet.
 
+3.00_01 Wed Sep 27 17:25:47 CEST 2006
+   - *** WARNING: developer release, the pod is not up to date with the code
+   - Now uses array as objects (with Class::Gomor::Array)
+   - good speed improvement by replacing calls to accessors methods to 
+     direct array indice lookup
+   - small memory usage improvement thanks to array objects
+   - Net::Packet::Dump: complete rewrite
+   - Net::Packet::Env: nearly complete rewrite
+
 2.22 Sat May 13 11:45:03 CEST 2006
    - bugfix: in Env.pm, debug mode was not working anymore
 
-2.21 Fri May 12 23:30:06 CEST 2006
+2.21 
    - Net::Packet::Dump: added getStats()
    - now uses Class::Gomor instead of Class::Gomor::Hash (but objects are 
      still hashes)

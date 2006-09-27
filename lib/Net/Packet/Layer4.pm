@@ -1,10 +1,13 @@
 #
-# $Id: Layer4.pm,v 1.1.1.1.4.13 2006/03/19 17:17:01 gomor Exp $
+# $Id: Layer4.pm,v 1.2.2.2 2006/05/25 12:18:19 gomor Exp $
 #
 package Net::Packet::Layer4;
+use strict;
+use warnings;
 
 require Net::Packet::Layer;
 our @ISA = qw(Net::Packet::Layer);
+__PACKAGE__->cgBuildIndices;
 
 use Net::Packet::Consts qw(:layer);
 

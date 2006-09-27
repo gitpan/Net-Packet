@@ -1,13 +1,13 @@
 #
-# $Id: Frame.pm,v 1.2.2.59 2006/05/13 09:53:59 gomor Exp $
+# $Id: Frame.pm,v 1.3.2.8 2006/06/04 13:56:23 gomor Exp $
 #
 package Net::Packet::Frame;
 use warnings;
 use strict;
 use Carp;
 
-require Class::Gomor::Hash;
-our @ISA = qw(Class::Gomor::Hash);
+require Class::Gomor::Array;
+our @ISA = qw(Class::Gomor::Array);
 
 require Net::Packet;
 require Net::Packet::Dump;
@@ -23,8 +23,8 @@ require Net::Packet::NULL;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
 
-use Time::HiRes qw(time);
-use Net::Packet qw($Env);
+use Time::HiRes qw(gettimeofday);
+use Net::Packet::Env qw($Env);
 use Net::Packet::Consts qw(:dump :layer :arp);
 
 our @AS = qw(
@@ -39,68 +39,81 @@ our @AS = qw(
    timestamp
    noPadding
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
+
+sub _gettimeofday {
+   my ($sec, $usec) = gettimeofday();
+   sprintf("%d.%06d", $sec, $usec);
+}
 
 sub new {
    my $self = shift->SUPER::new(
-      timestamp => time(),
+      timestamp => _gettimeofday(),
       env       => $Env,
       noPadding => 0,
       @_,
    );
 
-   my $env = $self->env;
+   my $env = $self->[$__env];
 
-   unless ($env->desc) {
-      if ($self->l2) {
+   if (! $env->noFrameAutoDesc && ! $env->desc) {
+      if ($self->[$__l2]) {
          require Net::Packet::DescL2;
          $env->desc(Net::Packet::DescL2->new);
          $self->cgDebugPrint(1, "DescL2 object created");
       }
-      elsif ($self->l3) {
+      elsif ($self->[$__l3]) {
          require Net::Packet::DescL3;
-         $env->desc(Net::Packet::DescL3->new(target => $self->l3->dst));
+         $env->desc(Net::Packet::DescL3->new(
+            target => $self->[$__l3]->dst,
+         ));
          $self->cgDebugPrint(1, "DescL3 object created");
       }
-      elsif ($self->l4) {
-         croak("You must manually create a DescL4 object\n");
+      elsif ($self->[$__l4]) {
+         confess("@{[(caller(0))[3]]}: you must manually create a DescL4 ".
+                 "object\n");
       }
    }
 
-   unless ($env->dump) {
+   if (! $env->noFrameAutoDump && ! $env->dump) {
       require Net::Packet::Dump;
+      my $dumpFilter = ($env->dump && $env->dump->filter);
       $env->dump(
          Net::Packet::Dump->new(
-            filter    => $Env->filter || $self->getFilter,
-            callStart => 0,
+            filter => $dumpFilter || $self->getFilter,
          ),
       );
       $self->cgDebugPrint(1, "Dump object created");
    }
 
-   $self->raw ? $self->unpack : $self->pack;
+   $self->[$__raw] ? $self->unpack : $self->pack;
 }
 
-sub getLengthFromL7 { my $self = shift; $self->l7 ? $self->l7->getLength : 0 }
+sub getLengthFromL7 {
+   my $self = shift;
+   $self->[$__l7] ? $self->[$__l7]->getLength : 0;
+}
 sub getLengthFromL4 {
    my $self = shift;
    my $len  = 0;
-   $len    += $self->l4->getLength if $self->l4;
+   $len    += $self->[$__l4]->getLength if $self->[$__l4];
    $len    += $self->getLengthFromL7;
    $len || 0;
 }
 sub getLengthFromL3 {
    my $self = shift;
    my $len  = 0;
-   $len    += $self->l3->getLength if $self->l3;
+   $len    += $self->[$__l3]->getLength if $self->[$__l3];
    $len    += $self->getLengthFromL4;
    $len || 0;
 }
 sub getLengthFromL2 {
    my $self = shift;
    my $len  = 0;
-   $len    += $self->l2->getLength if $self->l2;
+   $len    += $self->[$__l2]->getLength if $self->[$__l2];
    $len    += $self->getLengthFromL3;
    $len || 0;
 }
@@ -114,13 +127,13 @@ sub _unpackFromL3 {
       my $l3;
 
       # First, try IPv4
-      $l3 = Net::Packet::IPv4->new(raw => $self->raw) or return undef;
+      $l3 = Net::Packet::IPv4->new(raw => $self->[$__raw]) or return undef;
       unless ($l3->version == 4) {
          # Then IPv6
-         $l3 = Net::Packet::IPv6->new(raw => $self->raw) or return undef;
+         $l3 = Net::Packet::IPv6->new(raw => $self->[$__raw]) or return undef;
          unless ($l3->version == 6) {
             # Then ARP
-            $l3 = Net::Packet::ARP->new(raw => $self->raw) or return undef;
+            $l3 = Net::Packet::ARP->new(raw => $self->[$__raw]) or return undef;
             unless ($l3->hType eq NP_ARP_HTYPE_ETH) {
                carp("@{[(caller(0))[3]]}: unknown frame, unable to unpack\n");
                return undef;
@@ -133,19 +146,19 @@ sub _unpackFromL3 {
          last;
       }
 
-      $self->l3($l3);
+      $self->[$__l3] = $l3;
 
-      last if $self->l3->encapsulate eq NP_LAYER_NONE;
-      $nextLayer = NP_LAYER. $self->l3->encapsulate;
+      last if $self->[$__l3]->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->[$__l3]->encapsulate;
 
-      $self->l4($nextLayer->new(raw => $self->l3->payload))
+      $self->[$__l4] = $nextLayer->new(raw => $self->[$__l3]->payload)
          or return undef;
 
       # Here, no check; it is just raw layer 7 application data
-      last if $self->l4->encapsulate eq NP_LAYER_NONE;
-      $nextLayer = NP_LAYER. $self->l4->encapsulate;
+      last if $self->[$__l4]->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->[$__l4]->encapsulate;
 
-      $self->l7($nextLayer->new(raw => $self->l4->payload))
+      $self->[$__l7] = $nextLayer->new(raw => $self->[$__l4]->payload)
          or return undef;
    
       last;
@@ -159,40 +172,40 @@ sub unpack {
 
    my $whichLink = {
       NP_DUMP_LINK_NULL()   =>
-         sub { Net::Packet::NULL->new(raw => $self->raw) },
+         sub { Net::Packet::NULL->new(raw => $self->[$__raw]) },
       NP_DUMP_LINK_EN10MB() =>
-         sub { Net::Packet::ETH->new(raw => $self->raw)  },
+         sub { Net::Packet::ETH->new(raw => $self->[$__raw])  },
       NP_DUMP_LINK_RAW()    =>
-         sub { Net::Packet::RAW->new(raw => $self->raw)  },
+         sub { Net::Packet::RAW->new(raw => $self->[$__raw])  },
       NP_DUMP_LINK_SLL()    =>
-         sub { Net::Packet::SLL->new(raw => $self->raw)  },
+         sub { Net::Packet::SLL->new(raw => $self->[$__raw])  },
    };
 
    my $nextLayer;
    while (1) {
-      unless (exists $whichLink->{$self->env->link}) {
+      unless (exists $whichLink->{$self->[$__env]->dump->link}) {
          carp("Unable to unpack Frame for this datalink type: ".
-              "@{[$self->env->link]}\n");
+              "@{[$self->[$__env]->dump->link]}\n");
          last;
       }
 
-      my $l2 = $whichLink->{$self->env->link}() or return undef;
+      my $l2 = $whichLink->{$self->[$__env]->dump->link}() or return undef;
 
-      $self->l2($l2);
+      $self->[$__l2] = $l2;
 
       # For example, with a raw Datalink type (RAW.pm),
       # we don't know what is encapsulated
-      if ($self->l2->encapsulate eq NP_LAYER_UNKNOWN) {
+      if ($self->[$__l2]->encapsulate eq NP_LAYER_UNKNOWN) {
          return $self->_unpackFromL3;
       }
 
-      last if $self->l2->encapsulate eq NP_LAYER_NONE;
-      $nextLayer = NP_LAYER. $self->l2->encapsulate;
+      last if $self->[$__l2]->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->[$__l2]->encapsulate;
 
-      $self->l3($nextLayer->new(raw => $l2->payload))
+      $self->[$__l3] = $nextLayer->new(raw => $l2->payload)
          or return undef;
 
-      if ($self->l3->encapsulate eq NP_LAYER_UNKNOWN) {
+      if ($self->[$__l3]->encapsulate eq NP_LAYER_UNKNOWN) {
          carp("@{[(caller(0))[3]]}: unknown Layer4 protocol\n");
          last;
       }
@@ -200,16 +213,16 @@ sub unpack {
       $self->_fixWithIpLen  if $self->isIpv4;
       $self->_getArpPadding if $self->isArp;
 
-      last if $self->l3->encapsulate eq NP_LAYER_NONE;
-      $nextLayer = NP_LAYER. $self->l3->encapsulate;
+      last if $self->[$__l3]->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->[$__l3]->encapsulate;
 
-      $self->l4($nextLayer->new(raw => $self->l3->payload))
+      $self->[$__l4] = $nextLayer->new(raw => $self->[$__l3]->payload)
          or return undef;
 
-      last if $self->l4->encapsulate eq NP_LAYER_NONE;
-      $nextLayer = NP_LAYER. $self->l4->encapsulate;
+      last if $self->[$__l4]->encapsulate eq NP_LAYER_NONE;
+      $nextLayer = NP_LAYER. $self->[$__l4]->encapsulate;
 
-      $self->l7($nextLayer->new(raw => $self->l4->payload))
+      $self->[$__l7] = $nextLayer->new(raw => $self->[$__l4]->payload)
          or return undef;
 
       last;
@@ -222,37 +235,37 @@ sub pack {
    my $self = shift;
 
    # They all need info about other layers, to do their work
-   if ($self->l2) {
-      $self->l2->computeLengths($self)   or return undef;
-      $self->l2->computeChecksums($self) or return undef;
-      $self->l2->pack                    or return undef;
+   if ($self->[$__l2]) {
+      $self->[$__l2]->computeLengths($self)   or return undef;
+      $self->[$__l2]->computeChecksums($self) or return undef;
+      $self->[$__l2]->pack                    or return undef;
    }
-   if ($self->l3) {
-      $self->l3->computeLengths($self)   or return undef;
-      $self->l3->computeChecksums($self) or return undef;
-      $self->l3->pack                    or return undef;
+   if ($self->[$__l3]) {
+      $self->[$__l3]->computeLengths($self)   or return undef;
+      $self->[$__l3]->computeChecksums($self) or return undef;
+      $self->[$__l3]->pack                    or return undef;
    }
-   if ($self->l4) {
-      $self->l4->computeLengths($self)   or return undef;
-      $self->l4->computeChecksums($self) or return undef;
-      $self->l4->pack                    or return undef;
+   if ($self->[$__l4]) {
+      $self->[$__l4]->computeLengths($self)   or return undef;
+      $self->[$__l4]->computeChecksums($self) or return undef;
+      $self->[$__l4]->pack                    or return undef;
    }
-   if ($self->l7) {
-      $self->l7->computeLengths($self)   or return undef;
-      $self->l7->computeChecksums($self) or return undef;
-      $self->l7->pack                    or return undef;
+   if ($self->[$__l7]) {
+      $self->[$__l7]->computeLengths($self)   or return undef;
+      $self->[$__l7]->computeChecksums($self) or return undef;
+      $self->[$__l7]->pack                    or return undef;
    }
 
    my $raw;
-   $raw .= $self->l2->raw if $self->l2;
-   $raw .= $self->l3->raw if $self->l3;
-   $raw .= $self->l4->raw if $self->l4;
-   $raw .= $self->l7->raw if $self->l7;
+   $raw .= $self->[$__l2]->raw if $self->[$__l2];
+   $raw .= $self->[$__l3]->raw if $self->[$__l3];
+   $raw .= $self->[$__l4]->raw if $self->[$__l4];
+   $raw .= $self->[$__l7]->raw if $self->[$__l7];
 
    if ($raw) {
-      $self->raw($raw);
+      $self->[$__raw] = $raw;
 
-      $self->_padFrame unless $self->noPadding;
+      $self->_padFrame unless $self->[$__noPadding];
    }
 
    $self;
@@ -262,11 +275,11 @@ sub _padFrame {
    my $self = shift;
 
    # Pad this frame, this we send at layer 2
-   if ($self->l2 && $self->env->desc->isDescL2) {
-      my $rawLength = length($self->raw);
+   if ($self->[$__l2] && $self->[$__env]->desc->isDescL2) {
+      my $rawLength = length($self->[$__raw]);
       if ($rawLength < 60) {
-         $self->padding("G" x (60 - $rawLength));
-         $self->raw($self->raw. $self->padding);
+         $self->[$__padding] = ('G' x (60 - $rawLength));
+         $self->[$__raw] = $self->[$__raw].$self->[$__padding];
       }
    }
 }
@@ -274,30 +287,34 @@ sub _padFrame {
 # Will wipe out the trailing memory disclosure found in the packet
 # and put it into padding instance data
 sub _fixWithIpLen {
-   my $self   = shift;
-   my $oldLen = length($self->l3->payload);
+   my $self = shift;
 
-   my $truncated = substr($self->l3->payload, 0, $self->l3->getPayloadLength);
-   my $truncLen  = length($truncated);
-   my $padding   = substr($self->l3->payload, $truncLen, $oldLen - $truncLen);
+   my $oldLen = length($self->[$__l3]->payload);
 
-   $self->l3->payload($truncated);
-   $self->padding($padding);
+   my $truncated =
+      substr($self->[$__l3]->payload, 0, $self->[$__l3]->getPayloadLength);
+   my $truncLen = length($truncated);
+   my $padding  =
+      substr($self->[$__l3]->payload, $truncLen, $oldLen - $truncLen);
+
+   $self->[$__l3]->payload($truncated);
+   $self->[$__padding] = $padding;
 }
 
 # Same as previous, but ARP version
 sub _getArpPadding {
    my $self = shift;
 
-   if (length($self->raw) > 42) {
-      $self->padding(substr($self->raw, 42, length($self->raw) - 42));
-   }
+   my $len = length($self->[$__raw]);
+   ($len > 42)
+      ? do { $self->[$__padding] = substr($self->[$__raw], 42, $len - 42) }
+      : do { $self->[$__padding] = ''};
 }
 
 sub send {
    my $self = shift;
 
-   my $env = $self->env;
+   my $env = $self->[$__env];
 
    if ($env->dump && ! $env->dump->isRunning) {
       $env->dump->start;
@@ -333,11 +350,11 @@ sub send {
       }
    }
 
-   $self->timestamp(time());
-   $env->desc->send($self->raw);
+   $self->[$__timestamp] = _gettimeofday();
+   $env->desc->send($self->[$__raw]);
 }
 
-sub reSend { my $self = shift; $self->send unless $self->reply }
+sub reSend { my $self = shift; $self->send unless $self->[$__reply] }
 
 sub getFilter {
    my $self = shift;
@@ -345,16 +362,16 @@ sub getFilter {
    my $filter;
 
    # L4 filtering
-   if ($self->l4) {
+   if ($self->[$__l4]) {
       if ($self->isTcp) {
          $filter .= "(tcp and".
-                    " src port @{[$self->l4->dst]}".
-                    " and dst port @{[$self->l4->src]})";
+                    " src port @{[$self->[$__l4]->dst]}".
+                    " and dst port @{[$self->[$__l4]->src]})";
       }
       elsif ($self->isUdp) {
          $filter .= "(udp and".
-                    " src port @{[$self->l4->dst]}".
-                    " and dst port @{[$self->l4->src]})";
+                    " src port @{[$self->[$__l4]->dst]}".
+                    " and dst port @{[$self->[$__l4]->src]})";
       }
       elsif ($self->isIcmpv4) {
          $filter .= "(icmp)";
@@ -363,22 +380,22 @@ sub getFilter {
    }
 
    # L3 filtering
-   if ($self->l3) {
+   if ($self->[$__l3]) {
       $filter .= " and " if $filter;
 
       if ($self->isIpv4) {
-         $filter .= "(src host @{[$self->l3->dst]}".
-                    " and dst host @{[$self->l3->src]}) ".
+         $filter .= "(src host @{[$self->[$__l3]->dst]}".
+                    " and dst host @{[$self->[$__l3]->src]}) ".
                     " or ".
-                    "(icmp and dst host @{[$self->l3->src]})";
+                    "(icmp and dst host @{[$self->[$__l3]->src]})";
       }
       elsif ($self->isIpv6) {
-         $filter .= "(ip6 and src host @{[$self->l3->dst]}".
-                    " and dst host @{[$self->l3->src]})";
+         $filter .= "(ip6 and src host @{[$self->[$__l3]->dst]}".
+                    " and dst host @{[$self->[$__l3]->src]})";
       }
       elsif ($self->isArp) {
-         $filter .= "(arp and src host @{[$self->l3->dstIp]}".
-                    " and dst host @{[$self->l3->srcIp]})";
+         $filter .= "(arp and src host @{[$self->[$__l3]->dstIp]}".
+                    " and dst host @{[$self->[$__l3]->srcIp]})";
       }
    }
     
@@ -388,26 +405,27 @@ sub getFilter {
 sub recv {
    my $self = shift;
 
-   $self->env->dump->nextAll if $self->env->dump->isRunning;
+   $self->[$__env]->dump->nextAll if $self->[$__env]->dump->isRunning;
 
    # We already have the reply
-   return undef if $self->reply;
+   return undef if $self->[$__reply];
 
    croak("@{[(caller(0))[3]]}: \$self->env->dump variable not set\n")
-      unless $self->env->dump;
+      unless $self->[$__env]->dump;
 
-   if ($self->l4 && $self->l4->can('recv')) {
-      $self->reply($self->l4->recv($self));
+   if ($self->[$__l4] && $self->[$__l4]->can('recv')) {
+      $self->[$__reply] = $self->[$__l4]->recv($self);
    }
-   elsif ($self->l3 && $self->l3->can('recv')) {
-      $self->reply($self->l3->recv($self));
+   elsif ($self->[$__l3] && $self->[$__l3]->can('recv')) {
+      $self->[$__reply] = $self->[$__l3]->recv($self);
    }
    else {
       carp("@{[(caller(0))[3]]}: not implemented for this Layer\n");
+      return undef;
    }
 
-   $self->reply
-      ? do { $self->cgDebugPrint(1, "Reply received"); return $self->reply }
+   $self->[$__reply]
+      ? do { $self->cgDebugPrint(1, "Reply received"); return $self->[$__reply]}
       : return undef;
 }
 
@@ -415,10 +433,10 @@ sub recv {
 # Helpers
 #
 
-sub _isL2 { my $self = shift; $self->l2 && $self->l2->is eq shift() }
-sub _isL3 { my $self = shift; $self->l3 && $self->l3->is eq shift() }
-sub _isL4 { my $self = shift; $self->l4 && $self->l4->is eq shift() }
-sub _isL7 { my $self = shift; $self->l7 && $self->l7->is eq shift() }
+sub _isL2 { my $self = shift; $self->[$__l2] && $self->[$__l2]->is eq shift() }
+sub _isL3 { my $self = shift; $self->[$__l3] && $self->[$__l3]->is eq shift() }
+sub _isL4 { my $self = shift; $self->[$__l4] && $self->[$__l4]->is eq shift() }
+sub _isL7 { my $self = shift; $self->[$__l7] && $self->[$__l7]->is eq shift() }
 sub isEth    { shift->_isL2(NP_LAYER_ETH)    }
 sub isRaw    { shift->_isL2(NP_LAYER_RAW)    }
 sub isNull   { shift->_isL2(NP_LAYER_NULL)   }
@@ -537,7 +555,7 @@ Frames are normally automatically padded to achieve the minimum required length.
 
 Object constructor. If a B<$Env->desc> object does not exists, one is created by analyzing attributes (so, either one of B<Net::Packet::DescL2>, B<Net::Packet::DescL3>. B<Net::Packet::DescL4> cannot be created automatically for now). The same behavious is true for B<$Env->dump> object. Default values:
 
-timestamp: time(),
+timestamp: gettimeofday(),
 
 env:       $Env
 

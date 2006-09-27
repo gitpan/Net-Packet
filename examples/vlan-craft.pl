@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: vlan-craft.pl,v 1.1.2.2 2006/03/12 11:09:10 gomor Exp $
+# $Id: vlan-craft.pl,v 1.2.2.1 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -14,7 +12,7 @@ getopts('I:i:m:', \%opts);
 die("Usage: $0 -I srcIp -i dstIp -m dstMac\n")
    unless $opts{I} && $opts{i} && $opts{m};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->debug(3);
 

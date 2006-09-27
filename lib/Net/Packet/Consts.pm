@@ -1,5 +1,5 @@
 #
-# $Id: Consts.pm,v 1.1.2.15 2006/05/13 09:53:59 gomor Exp $
+# $Id: Consts.pm,v 1.2.2.2 2006/06/03 09:24:16 gomor Exp $
 #
 package Net::Packet::Consts;
 use strict;
@@ -26,6 +26,9 @@ our %EXPORT_TAGS = (
       NP_DUMP_LINK_EN10MB
       NP_DUMP_LINK_RAW
       NP_DUMP_LINK_SLL
+      NP_DUMP_MODE_OFFLINE
+      NP_DUMP_MODE_ONLINE
+      NP_DUMP_MODE_WRITER
    )],
    layer => [qw(   
       NP_LAYER
@@ -176,6 +179,9 @@ use constant NP_DUMP_LINK_NULL   => 0;
 use constant NP_DUMP_LINK_EN10MB => 1;
 use constant NP_DUMP_LINK_RAW    => 12;
 use constant NP_DUMP_LINK_SLL    => 113;
+use constant NP_DUMP_MODE_ONLINE  => 0;
+use constant NP_DUMP_MODE_OFFLINE => 1;
+use constant NP_DUMP_MODE_WRITER  => 2;
 
 use constant NP_LAYER         => 'Net::Packet::';
 use constant NP_LAYER_ETH     => 'ETH';

@@ -1,9 +1,7 @@
 #!/usr/bin/perl
-
 #
-# $Id: vlan-support.pl,v 1.1.2.2 2006/03/12 11:09:10 gomor Exp $
+# $Id: vlan-support.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
 #
-
 use strict;
 use warnings;
 
@@ -13,19 +11,20 @@ getopts('f:', \%opts);
 
 die("Usage: $0 -f pcapFile\n") unless $opts{f};
 
-use Net::Pkt;
+use Net::Packet;
 
 $Env->debug(3);
 
 print "VERSION: ", $Net::Packet::VERSION, "\n";
 
 my $d = Net::Packet::Dump->new(
-   unlinkOnDestroy => 0,
-   file            => $opts{f},
-   callStart       => 0,
+   unlinkOnClean => 0,
+   file          => $opts{f},
 );
+$d->start;
+$d->nextAll;
+$d->stop;
 
-$d->analyze;
 for ($d->frames) {
    print $_->l2->print, "\n";
    print $_->l3->print, "\n";

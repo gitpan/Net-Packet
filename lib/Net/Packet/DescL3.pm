@@ -1,5 +1,5 @@
 #
-# $Id: DescL3.pm,v 1.2.2.24 2006/05/13 09:53:59 gomor Exp $
+# $Id: DescL3.pm,v 1.3.2.3 2006/06/04 13:56:23 gomor Exp $
 #
 package Net::Packet::DescL3;
 use strict;
@@ -8,22 +8,25 @@ use Carp;
 
 require Net::Packet::Desc;
 our @ISA = qw(Net::Packet::Desc);
+__PACKAGE__->cgBuildIndices;
+
+no strict 'vars';
 
 require Net::Write::Layer3;
 
 sub new {
    my $self = shift->SUPER::new(@_);
 
-   croak("@{[(caller(0))[3]]}: you must pass `target' parameter\n")
-      unless $self->target;
+   confess("@{[(caller(0))[3]]}: you must pass `target' parameter\n")
+      unless $self->[$__target];
 
    my $nwrite = Net::Write::Layer3->new(
-      dev => $self->env->dev,
-      dst => $self->target,
+      dev => $self->[$__dev],
+      dst => $self->[$__target],
    );
    $nwrite->open;
 
-   $self->_io($nwrite);
+   $self->[$___io] = $nwrite;
 
    $self;
 }

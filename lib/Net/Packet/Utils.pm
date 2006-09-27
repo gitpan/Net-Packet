@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.1.2.23 2006/05/13 09:53:59 gomor Exp $
+# $Id: Utils.pm,v 1.2.2.2 2006/05/31 16:43:41 gomor Exp $
 #
 package Net::Packet::Utils;
 use strict;
@@ -10,11 +10,6 @@ require Exporter;
 our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(
-   autoDev
-   autoIp
-   autoIp6
-   autoMac
-   getPcapLink
    getHostIpv4Addr
    getHostIpv4Addrs
    getHostIpv6Addr
@@ -37,108 +32,9 @@ our %EXPORT_TAGS = (
    all => [ @EXPORT_OK ],
 );
 
-BEGIN {
-   my $osname = {
-      cygwin  => [ \&_autoMacWin32, \&_autoIpWin32, \&_autoIp6Win32, ],
-      MSWin32 => [ \&_autoMacWin32, \&_autoIpWin32, \&_autoIp6Win32, ],
-   };
-
-   *autoMac = $osname->{$^O}->[0] || \&_autoMacOther;
-   *autoIp  = $osname->{$^O}->[1] || \&_autoIpOther;
-   *autoIp6 = $osname->{$^O}->[2] || \&_autoIp6Other;
-}
-
 use Socket;
 use Socket6;
-use Net::Pcap;
 require Net::IPv6Addr;
-
-sub autoDev {
-   my $err;
-   my $dev = Net::Pcap::lookupdev(\$err);
-   if (defined $err) {
-      carp("@{[(caller(0))[3]]}: Net::Pcap::lookupdev: $err ; ".
-           "unable to autochoose device\n");
-   }
-
-   $dev;
-}
-
-sub _autoMacWin32 { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
-sub _autoIpWin32  { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
-sub _autoIp6Win32 { carp("@{[(caller(0))[3]]}: not implemented yet\n"); undef }
-
-sub _ifconfigGetIpv4Addr {
-   my $dev = shift;
-
-   return undef unless $dev =~ /^[a-z]+[0-9]+$/;
-
-   my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
-   my ($ip) = ($buf =~ /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/i);
-   $ip ? return lc($ip)
-       : return '127.0.0.1';
-}
-
-sub _autoIpOther {
-   my $dev = shift;
-
-   my $ip = _ifconfigGetIpv4Addr($dev)
-      or carp("@{[(caller(0))[3]]}: unable to autochoose IPv4 address ".
-              "from $dev\n");
-
-   $ip;
-}
-
-sub _ifconfigGetIpv6Addr {
-   my $dev = shift;
-
-   return undef unless $dev =~ /^[a-z]+[0-9]+$/;
-
-   my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
-   my $mac = autoMac($dev);
-   $buf =~ s/$dev//;
-   $buf =~ s/$mac//i;
-   my ($ip) = ($buf =~ /((?:[a-f0-9]{1,4}(?::|%|\/){1,2})+)/i); # XXX: better
-   $ip ? do { $ip =~ s/%|\///g; return lc($ip) }
-       : return undef;
-}
-
-sub _autoIp6Other {
-   my $dev = shift;
-
-   my $ip6 = _ifconfigGetIpv6Addr($dev)
-      or carp("@{[(caller(0))[3]]}: unable to autochoose IPv6 address ".
-              "from $dev\n");
-
-   $ip6 = undef unless Net::IPv6Addr::ipv6_chkip($ip6);
-
-   $ip6;
-}
-
-sub _ifconfigGetMac {
-   my $dev = shift;
-
-   return undef unless $dev =~ /^[a-z]+[0-9]+$/;
-
-   my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
-   my ($ip) = ($buf =~ /([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f
-]{2}:[0-9a-f]{2})/i);
-   $ip ? return lc($ip)
-       : return 'ff:ff:ff:ff:ff:ff';
-}
-
-sub _autoMacOther {
-   my $dev = shift;
-
-   my $mac;
-   unless ($mac = _ifconfigGetMac($dev)) {
-      carp("@{[(caller(0))[3]]}: unable to autochoose MAC address from $dev\n");
-   }
-
-   $mac;
-}
-
-sub getPcapLink { Net::Pcap::datalink(shift()) }
 
 sub getHostIpv4Addr {
    my $name  = shift;
@@ -147,9 +43,8 @@ sub getHostIpv4Addr {
    return $name if $name =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
    my @addrs = (gethostbyname($name))[4];
-   @addrs
-      ? return join('.', unpack('C4', $addrs[0]))
-      : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
+   @addrs ? return join('.', unpack('C4', $addrs[0]))
+          : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
    return undef;
 }
 
@@ -160,9 +55,8 @@ sub getHostIpv4Addrs {
    return $name if $name =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
    my @addrs = (gethostbyname($name))[4];
-   @addrs
-      ? return @addrs
-      : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
+   @addrs ? return @addrs
+          : carp("@{[(caller(0))[3]]}: unable to resolv `$name' hostname\n");
    return ();
 }
 
@@ -280,26 +174,6 @@ This module is not object oriented, it just implements some utilities used accro
 =head1 SUBROUTINES
 
 =over 4
-
-=item B<autoDev>
-
-Returns default network device (like 'eth0') as a string.
-
-=item B<autoIp> (scalar)
-
-Returns IP address of argument given device.
-
-=item B<autoIp6> (scalar)
-
-Returns IPv6 address of argument given device.
-
-=item B<autoMac> (scalar)
-
-Returns MAC address  of argument given device.
-
-=item B<getPcapLink> (scalar)
-
-Returns the link type of that pcap descriptor passed as an argument.
 
 =item B<getHostIpv4Addr> (scalar)
 

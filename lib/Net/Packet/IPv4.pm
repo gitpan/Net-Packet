@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.2.2.42 2006/05/13 09:53:59 gomor Exp $
+# $Id: IPv4.pm,v 1.3.2.4 2006/06/04 13:36:56 gomor Exp $
 #
 package Net::Packet::IPv4;
 use strict;
@@ -9,9 +9,8 @@ require Net::Packet::Layer3;
 our @ISA = qw(Net::Packet::Layer3);
 
 use Carp;
-use Net::Packet qw($Env);
-use Net::Packet::Utils qw(getHostIpv4Addr getRandom16bitsInt inetAton inetNtoa
-   inetChecksum);
+use Net::Packet::Env qw($Env);
+use Net::Packet::Utils qw(getRandom16bitsInt inetAton inetNtoa inetChecksum);
 use Net::Packet::Consts qw(:ipv4 :layer);
 
 our @AS = qw(
@@ -31,8 +30,10 @@ our @AS = qw(
    noFixLen
    doChecksum
 );
-
+__PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);      
+
+no strict 'vars';
 
 BEGIN {
    my $osname = {
@@ -72,15 +73,12 @@ sub _newCommon {
       @_,
    );
 
-   $self->src(getHostIpv4Addr($self->src));
-   $self->dst(getHostIpv4Addr($self->dst));
-
-   unless ($self->raw) {
+   unless ($self->[$__raw]) {
       # Autocompute header length if not user specified
-      unless ($self->hlen) {
+      unless ($self->[$__hlen]) {
          my $hLen = NP_IPv4_HDR_LEN;
-         $hLen   += length($self->options) if $self->options;
-         $self->hlen($hLen / 4);
+         $hLen   += length($self->[$__options]) if $self->[$__options];
+         $self->[$__hlen] = $hLen / 4;
       }
    }
 
@@ -91,33 +89,31 @@ sub pack {
    my $self = shift;
 
    # Thank you Stephanie Wehner
-   my $hlenVer  = ($self->hlen & 0x0f) | (($self->version << 4) & 0xf0);
-   my $flags    = $self->flags;
-   my $offset   = $self->offset;
+   my $hlenVer  = ($self->[$__hlen] & 0x0f)|(($self->[$__version] << 4) & 0xf0);
+   my $flags    = $self->[$__flags];
+   my $offset   = $self->[$__offset];
 
-   my $len =
-      ($self->noFixLen ? _fixLenOther($self->length) : _fixLen($self->length));
+   my $len = ($self->[$__noFixLen] ? _fixLenOther($self->[$__length])
+                                   : _fixLen($self->[$__length]));
 
-   $self->raw(
-      $self->SUPER::pack('CCa*nnCCna4a4',
-         $hlenVer,
-         $self->tos,
-         $len,
-         $self->id,
-         $flags << 13 | $offset,
-         $self->ttl,
-         $self->protocol,
-         $self->checksum,
-         inetAton($self->src),
-         inetAton($self->dst),
-      ),
+   $self->[$__raw] = $self->SUPER::pack('CCa*nnCCna4a4',
+      $hlenVer,
+      $self->[$__tos],
+      $len,
+      $self->[$__id],
+      $flags << 13 | $offset,
+      $self->[$__ttl],
+      $self->[$__protocol],
+      $self->[$__checksum],
+      inetAton($self->[$__src]),
+      inetAton($self->[$__dst]),
    ) or return undef;
 
    my $opt;
-   if ($self->options) {
-      $opt = $self->SUPER::pack('a*', $self->options)
+   if ($self->[$__options]) {
+      $opt = $self->SUPER::pack('a*', $self->[$__options])
          or return undef;
-      $self->raw($self->raw. $opt);
+      $self->[$__raw] = $self->[$__raw].$opt;
    }
 
    1;
@@ -127,46 +123,48 @@ sub unpack {
    my $self = shift;
 
    my ($verHlen, $tos, $len, $id, $flags, $ttl, $proto, $cksum, $src, $dst,
-      $payload) = $self->SUPER::unpack('CCnnnCCna4a4 a*', $self->raw)
+      $payload) = $self->SUPER::unpack('CCnnnCCna4a4 a*', $self->[$__raw])
          or return undef;
 
-   $self->version(($verHlen & 0xf0) >> 4);
-   $self->hlen($verHlen & 0x0f);
-   $self->tos($tos);
-   $self->length($len);
-   $self->id($id);
-   $self->flags($flags >> 13);
-   $self->offset($flags & 0x1FFF);
-   $self->ttl($ttl);
-   $self->protocol($proto);
-   $self->checksum($cksum);
-   $self->src(inetNtoa($src));
-   $self->dst(inetNtoa($dst));
-   $self->payload($payload);
+   $self->[$__version] = ($verHlen & 0xf0) >> 4;
+   $self->[$__hlen] = $verHlen & 0x0f;
+   $self->[$__tos] = $tos;
+   $self->[$__length] = $len;
+   $self->[$__id] = $id;
+   $self->[$__flags] = $flags >> 13;
+   $self->[$__offset] = $flags & 0x1FFF;
+   $self->[$__ttl] = $ttl;
+   $self->[$__protocol] = $proto;
+   $self->[$__checksum] = $cksum;
+   $self->[$__src] = inetNtoa($src);
+   $self->[$__dst] = inetNtoa($dst);
+   $self->[$__payload] = $payload;
 
-   my ($options, $payload2) =
-      $self->SUPER::unpack('a'. $self->getOptionsLength. 'a*', $self->payload)
-         or return undef;
+   my ($options, $payload2) = $self->SUPER::unpack(
+      'a'. $self->getOptionsLength. 'a*', $self->[$__payload]
+   ) or return undef;
 
-   $self->options($options);
-   $self->payload($payload2);
+   $self->[$__options] = $options;
+   $self->[$__payload] = $payload2;
 
    1;
 }
 
-sub getLength        { my $self = shift; $self->hlen > 0 ? $self->hlen * 4 : 0 }
-sub getHeaderLength  { NP_IPv4_HDR_LEN                                         }
+sub getLength {
+   my $self = shift;
+   $self->[$__hlen] > 0 ? $self->[$__hlen] * 4 : 0;
+}
+sub getHeaderLength  { NP_IPv4_HDR_LEN }
 sub getPayloadLength {
    my $self = shift;
-   $self->length > $self->getLength
-      ? $self->length - $self->getLength
-      : 0;
+   my $gLen = $self->getLength;
+   $self->[$__length] > $gLen ? $self->[$__length] - $gLen : 0;
 }
 sub getOptionsLength {
    my $self = shift;
-   $self->getLength > $self->getHeaderLength
-      ? $self->getLength - $self->getHeaderLength
-      : 0;
+   my $gLen = $self->getLength;
+   my $hLen = $self->getHeaderLength;
+   $gLen > $hLen ? $gLen - $hLen : 0;
 }
 
 sub _computeTotalLength {
@@ -174,12 +172,12 @@ sub _computeTotalLength {
    my $frame = shift;
 
    # Do not compute if user specified
-   return if $self->length;
+   return if $self->[$__length];
 
    my $total = $self->getLength;
    $total += $frame->l4->getLength;
    $total += $frame->l7->getLength if $frame->l7;
-   $self->length($total);
+   $self->[$__length] = $total;
 }
 
 sub computeLengths {
@@ -194,10 +192,10 @@ sub computeLengths {
 sub computeChecksums {
    my $self  = shift;
 
-   return 1 unless $self->doChecksum;
+   return 1 unless $self->[$__doChecksum];
 
    $self->pack;
-   $self->checksum(inetChecksum($self->raw));
+   $self->[$__checksum] = inetChecksum($self->[$__raw]);
 
    1;
 }
@@ -214,12 +212,12 @@ sub encapsulate {
 
 sub getKey {
    my $self  = shift;
-   $self->is.':'.$self->src.'-'.$self->dst;
+   $self->is.':'.$self->[$__src].'-'.$self->[$__dst];
 }
 
 sub getKeyReverse {
    my $self  = shift;
-   $self->is.':'.$self->dst.'-'.$self->src;
+   $self->is.':'.$self->[$__dst].'-'.$self->[$__src];
 }
 
 sub print {
@@ -232,17 +230,17 @@ sub print {
       "$l: $i: tos:0x%.2x  flags:0x%.2x  offset:%d\n".
       "$l: $i: checksum:0x%.4x  protocol:0x%.2x\n".
       "$l: $i: size:%d  length:%d  optionsLength:%d  payload:%d",
-         $self->version,
-         $self->id,
-         $self->ttl,
-         $self->src,
-         $self->dst,
-         $self->tos,
-         $self->flags,
-         $self->offset,
-         $self->checksum,
-         $self->protocol,
-         $self->length,
+         $self->[$__version],
+         $self->[$__id],
+         $self->[$__ttl],
+         $self->[$__src],
+         $self->[$__dst],
+         $self->[$__tos],
+         $self->[$__flags],
+         $self->[$__offset],
+         $self->[$__checksum],
+         $self->[$__protocol],
+         $self->[$__length],
          $self->getLength,
          $self->getOptionsLength,
          $self->getPayloadLength,

@@ -1,17 +1,19 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Net-Packet
-version:      2.22
-version_from: Packet.pm
+version:      3.00_01
+version_from: lib/Net/Packet.pm
 installdirs:  site
 requires:
     Bit::Vector:                   0
-    Class::Gomor:                  0
+    Class::Gomor:                  1.00
     Net::IPv6Addr:                 0
+    Net::Libdnet:                  0
     Net::Pcap:                     0.12
-    Net::Write:                    0
+    Net::Write:                    0.82
     Socket6:                       0
+    Storable:                      0
     Time::HiRes:                   0
 
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+generated_by: ExtUtils::MakeMaker version 6.30
