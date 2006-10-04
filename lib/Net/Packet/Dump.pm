@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.3.2.9 2006/06/04 13:44:52 gomor Exp $
+# $Id: Dump.pm,v 1.3.2.10 2006/09/29 14:12:15 gomor Exp $
 #
 package Net::Packet::Dump;
 use strict;
@@ -20,6 +20,7 @@ use Storable qw(lock_store lock_retrieve);
 
 our @AS = qw(
    dev
+   env
    file
    filter
    overwrite
@@ -65,6 +66,7 @@ BEGIN {
 sub new {
    my $self = shift->SUPER::new(
       dev        => $Env->dev,
+      env        => $Env,
       file       => "netpacket-tmp-$$.@{[getRandom32bitsInt()]}.pcap",
       filter     => '',
       overwrite  => 0,
@@ -224,11 +226,11 @@ sub _startTcpdump {
       croak("@{[(caller(0))[3]]}: open_live: $err\n");
    }
 
-   my $net;
-   my $mask;
+   my $net  = 0;
+   my $mask = 0;
    Net::Pcap::lookupnet($self->[$__dev], \$net, \$mask, \$err);
    if ($err) {
-      croak("@{[(caller(0))[3]]}: lookupnet: $err\n");
+      carp("@{[(caller(0))[3]]}: lookupnet: $err\n");
    }
 
    my $fcode;
@@ -409,6 +411,7 @@ sub _pcapNext {
    if (my $raw = Net::Pcap::next($self->[$___pcapd], \%hdr)) {
       $hdr{tv_usec} = sprintf("%06d", $hdr{tv_usec});
       my $frame = Net::Packet::Frame->new(
+         env       => $self->env,
          raw       => $raw,
          timestamp => "$hdr{tv_sec}.$hdr{tv_usec}",
       ) or return undef;
@@ -557,9 +560,9 @@ sub framesSorted {
       # Wipe headers, since if not, framesFor() will not be able to find them.
       # Because if you create a Frame from L3, no headers are set for L2, but 
       # the Dump will have them and store them into the l2Key.
-      if ($Env->desc && ! $self->[$__noLayerWipe]) {
-         $f->l2(undef) if ref($Env->desc) =~ /L3|L4/;
-         $f->l3(undef) if ref($Env->desc) =~ /L4/;
+      if ($self->env->desc && ! $self->[$__noLayerWipe]) {
+         $f->l2(undef) if ref($self->env->desc) =~ /L3|L4/;
+         $f->l3(undef) if ref($self->env->desc) =~ /L4/;
       }
 
       my $l2Key = ($f->l2 && $f->l2->getKey($f)) || 'all';

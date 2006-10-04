@@ -1,5 +1,10 @@
 Revision history for Perl extension Net::Packet.
 
+3.00_02 Wed Oct  4 23:18:43 CEST 2006
+   - bugfix: now it is possible to open a network interface with no IP address
+   - bugfix: now it is possible to create a Dump object and give it another Env 
+             object, without interfering with the default Env object
+
 3.00_01 Wed Sep 27 17:25:47 CEST 2006
    - *** WARNING: developer release, the pod is not up to date with the code
    - Now uses array as objects (with Class::Gomor::Array)
