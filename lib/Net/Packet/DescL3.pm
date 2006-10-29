@@ -1,5 +1,5 @@
 #
-# $Id: DescL3.pm,v 1.3.2.3 2006/06/04 13:56:23 gomor Exp $
+# $Id: DescL3.pm,v 1.3.2.4 2006/10/29 14:25:54 gomor Exp $
 #
 package Net::Packet::DescL3;
 use strict;
@@ -41,10 +41,13 @@ Net::Packet::DescL3 - object for a network layer (layer 3) descriptor
 
 =head1 SYNOPSIS
 
-   use Net::Packet::DescL3;
+   require Net::Packet::DescL3;
 
    # Usually, you use it to send IPv4 frames
-   my $d3 = Net::Packet::DescL3->new(target => '192.168.0.1');
+   my $d3 = Net::Packet::DescL3->new(
+      dev    => 'eth0',
+      target => '192.168.0.1',
+   );
 
    $d3->send($rawStringToNetwork);
 
@@ -68,7 +71,20 @@ IPv4 address of the target host. You must set it to be able to send frames.
 
 =item B<new>
 
-Create the object, using default $Net::Packet::Env object to choose which device and source address to use (see B<Net::Packet::Env>). When the object is created, the $Net::Packet::Env object as its B<desc> attributes set to it. Use B<noEnvSet> to avoid that.
+Create the object, using default B<$Env> object values for B<dev>, B<ip>, B<ip6>
+ and B<mac> (see B<Net::Packet::Env>). When the object is created, the B<$Env> g
+lobal object has its B<desc> attributes set to it. You can avoid this behaviour 
+by setting B<noDescAutoSet> in B<$Env> object (see B<Net::Packet::Env>).
+
+Default values for attributes:
+
+dev: $Env->dev
+
+ip:  $Env->ip
+
+ip6: $Env->ip6
+
+mac: $Env->mac
 
 =back
 

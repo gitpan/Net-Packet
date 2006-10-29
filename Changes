@@ -1,5 +1,21 @@
 Revision history for Perl extension Net::Packet.
 
+3.00 Sun Oct 29 15:31:06 CET 2006
+  - Net::Packet::Dump: added keepTimestamp attribute to keep original pcap 
+                       timestamp. Default is to not keep original and use our 
+                       own timestamp.
+  - bugfix: in Utils.pm, a redifined error is now removed
+  - bugfix: in DescL4.pm, a redifined error is now removed
+  - bugfix: in DescL4.pm, family attribute now initialized
+  - pod update: lib/Net/Packet.pm
+  - pod update: lib/Net/Packet/Dump.pm
+  - pod update: lib/Net/Packet/Env.pm
+  - pod update: lib/Net/Packet/Frame.pm
+  - pod update: lib/Net/Packet/Desc.pm
+  - pod update: lib/Net/Packet/DescL2.pm
+  - pod update: lib/Net/Packet/DescL3.pm
+  - pod update: lib/Net/Packet/DescL4.pm
+
 3.00_02 Wed Oct  4 23:18:43 CEST 2006
    - bugfix: now it is possible to open a network interface with no IP address
    - bugfix: now it is possible to create a Dump object and give it another Env 

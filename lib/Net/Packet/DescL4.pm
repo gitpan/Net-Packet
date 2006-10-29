@@ -1,5 +1,5 @@
 #
-# $Id: DescL4.pm,v 1.3.2.4 2006/06/04 13:56:23 gomor Exp $
+# $Id: DescL4.pm,v 1.3.2.6 2006/10/29 14:25:36 gomor Exp $
 #
 package Net::Packet::DescL4;
 use strict;
@@ -13,12 +13,13 @@ __PACKAGE__->cgBuildIndices;
 use Net::Packet::Consts qw(:desc :layer);
 
 use Socket;
-use Socket6;
+require Socket6;
 require Net::Write::Layer4;
 
 sub new {
    my $self = shift->SUPER::new(
       protocol => NP_DESC_IPPROTO_TCP,
+      family   => NP_LAYER_IPv4,
       @_,
    );
 
@@ -64,15 +65,16 @@ Net::Packet::DescL4 - object for a transport layer (layer 4) descriptor
 
 =head1 SYNOPSIS
 
-   use Net::Packet::DescL4;
+   require Net::Packet::DescL4;
 
    # Get NP_DESC_* constants
-   use Net::Packet::Consts qw(:desc);
+   use Net::Packet::Consts qw(:desc :layer);
 
    # Usually, you use it to send TCP and UDP frames over IPv4
    my $d4 = Net::Packet::DescL4->new(
       target   => '192.168.0.1',
       protocol => NP_DESC_IPPROTO_TCP,
+      family   => NP_LAYER_IPv4,
    );
 
    $d4->send($rawStringToNetwork);
@@ -105,11 +107,24 @@ The family address of B<target> attribute. It is either B<NP_LAYER_IPv4> or B<NP
 
 =item B<new>
 
-Create the object. When the object is created, the $Net::Packet::Env object as its B<desc> attributes set to it. Use B<noEnvSet> to avoid that. Default values:
+Create the object, using default B<$Env> object values for B<dev>, B<ip>, B<ip6>
+ and B<mac> (see B<Net::Packet::Env>). When the object is created, the B<$Env> g
+lobal object has its B<desc> attributes set to it. You can avoid this behaviour
+by setting B<noDescAutoSet> in B<$Env> object (see B<Net::Packet::Env>).
+
+Default values for attributes:
+
+dev:      $Env->dev
+
+ip:       $Env->ip
+
+ip6:      $Env->ip6
+
+mac:      $Env->mac
 
 protocol: NP_DESC_IPPROTO_TCP
 
-family  : NP_LAYER_IPv4
+family:   NP_LAYER_IPv4
 
 =item B<isFamilyIpv4>
 

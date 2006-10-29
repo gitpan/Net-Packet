@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.3.2.8 2006/06/04 13:56:23 gomor Exp $
+# $Id: Frame.pm,v 1.3.2.9 2006/10/29 12:36:41 gomor Exp $
 #
 package Net::Packet::Frame;
 use warnings;
@@ -9,7 +9,6 @@ use Carp;
 require Class::Gomor::Array;
 our @ISA = qw(Class::Gomor::Array);
 
-require Net::Packet;
 require Net::Packet::Dump;
 require Net::Packet::ETH;
 require Net::Packet::ARP;
@@ -462,10 +461,11 @@ Net::Packet::Frame - the core of Net::Packet framework
 
 =head1 SYNOPSIS
 
-   use Net::Packet::Frame;
+   require Net::Packet::Frame;
 
    # Since we passed a layer 3 object, a Net::Packet::DescL3 object 
-   # will be created
+   # will be created automatically, by default. See Net::Packet::Env 
+   # regarding changing this behaviour. Same for Net::Packet::Dump.
    my $frame = Net::Packet::Frame->new(
       l3 => $ipv4,  # Net::Packet::IPv4 object
       l4 => $tcp,   # Net::Packet::TCP object
@@ -497,7 +497,7 @@ Net::Packet::Frame - the core of Net::Packet framework
 
 In B<Net::Packet>, each sent and/or received frame is parsed and converted into a B<Net::Packet::Frame> object. Basically, it encapsulates various layers (2, 3, 4 and 7) into an object, making it easy to get or set information about it.
 
-When you create a frame object, a B<Net::Packet::Desc> object is created if none is found in the default B<$Env> object (from B<Net::Packet> module), and a B<Net::Packet::Dump> object is also created if none is found in this same B<$Env> object.
+When you create a frame object, a B<Net::Packet::Desc> object is created if none is found in the default B<$Env> object (from B<Net::Packet> module), and a B<Net::Packet::Dump> object is also created if none is found in this same B<$Env> object. You can change this beheaviour, see B<Net::Packet::Env>.
 
 Two B<new> invocation method exist, one with attributes passing, another with B<raw> attribute. This second method is usually used internally, in order to unpack received frame into all corresponding layers.
 
@@ -553,7 +553,7 @@ Frames are normally automatically padded to achieve the minimum required length.
 
 =item B<new>
 
-Object constructor. If a B<$Env->desc> object does not exists, one is created by analyzing attributes (so, either one of B<Net::Packet::DescL2>, B<Net::Packet::DescL3>. B<Net::Packet::DescL4> cannot be created automatically for now). The same behavious is true for B<$Env->dump> object. Default values:
+Object constructor. If a B<$Env->desc> object does not exists, one is created by analyzing attributes (so, either one of B<Net::Packet::DescL2>, B<Net::Packet::DescL3>. B<Net::Packet::DescL4> cannot be created automatically for now). The same behaviour is true for B<$Env->dump> object. You can change this default creation behaviour, see B<Net::Packet::Env>. Default values:
 
 timestamp: gettimeofday(),
 

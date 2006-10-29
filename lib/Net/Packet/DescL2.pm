@@ -1,5 +1,5 @@
 #
-# $Id: DescL2.pm,v 1.3.2.1 2006/04/25 21:39:52 gomor Exp $
+# $Id: DescL2.pm,v 1.3.2.2 2006/10/29 14:26:05 gomor Exp $
 #
 package Net::Packet::DescL2;
 use strict;
@@ -36,10 +36,12 @@ Net::Packet::DescL2 - object for a link layer (layer 2) descriptor
 
 =head1 SYNOPSIS
 
-   use Net::Packet::DescL2;
+   require Net::Packet::DescL2;
 
    # Usually, you use it to send ARP frames, that is crafted from ETH layer
-   my $d2 = Net::Packet::DescL2->new;
+   my $d2 = Net::Packet::DescL2->new(
+      dev => 'eth0',
+   );
 
    $d2->send($rawStringToNetwork);
 
@@ -53,7 +55,17 @@ See also B<Net::Packet::Desc> for other attributes and methods.
 
 =item B<new>
 
-Create the object, using default $Net::Packet::Env object to choose which device to use (see B<Net::Packet::Env>). When the object is created, the $Net::Packet::Env object as its B<desc> attributes set to it. Use B<noEnvSet> to avoid that.
+Create the object, using default B<$Env> object values for B<dev>, B<ip>, B<ip6> and B<mac> (see B<Net::Packet::Env>). When the object is created, the B<$Env> global object has its B<desc> attributes set to it. You can avoid this behaviour by setting B<noDescAutoSet> in B<$Env> object (see B<Net::Packet::Env>).
+
+Default values for attributes:
+
+dev: $Env->dev
+
+ip:  $Env->ip
+
+ip6: $Env->ip6
+
+mac: $Env->mac
 
 =back
 

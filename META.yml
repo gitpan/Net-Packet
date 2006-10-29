@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Net-Packet
-version:      3.00_02
+version:      3.00
 version_from: lib/Net/Packet.pm
 installdirs:  site
 requires:
@@ -10,7 +10,7 @@ requires:
     Net::IPv6Addr:                 0
     Net::Libdnet:                  0
     Net::Pcap:                     0.12
-    Net::Write:                    0.82
+    Net::Write:                    0.83
     Socket6:                       0
     Storable:                      0
     Time::HiRes:                   0

@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.3.2.10 2006/09/29 14:12:15 gomor Exp $
+# $Id: Dump.pm,v 1.3.2.12 2006/10/29 11:49:45 gomor Exp $
 #
 package Net::Packet::Dump;
 use strict;
@@ -34,6 +34,7 @@ our @AS = qw(
    noStore
    noLayerWipe
    mode
+   keepTimestamp
    _pid
    _pcapd
    _dumper
@@ -80,6 +81,7 @@ sub new {
       framesSorted   => {},
       frames         => [],
       mode           => NP_DUMP_MODE_ONLINE,
+      keepTimestamp  => 0,
       _sDataAwaiting => 0,
       _sName         => "netpacket-tmp-$$.@{[getRandom32bitsInt()]}.storable",
       @_,
@@ -405,15 +407,28 @@ sub _addToFramesSorted {
    push @{$self->[$__frames]}, $frame;
 }
 
+sub _getTimestamp {
+   my $self = shift;
+   my ($hdr) = @_;
+   $hdr->{tv_sec}.'.'.sprintf("%06d", $hdr->{tv_usec});
+}
+
+sub _setTimestamp {
+   my $self = shift;
+   my @time = Time::HiRes::gettimeofday();
+   $time[0].'.'.sprintf("%06d", $time[1]);
+}
+
 sub _pcapNext {
    my $self = shift;
    my %hdr;
    if (my $raw = Net::Pcap::next($self->[$___pcapd], \%hdr)) {
-      $hdr{tv_usec} = sprintf("%06d", $hdr{tv_usec});
+      my $ts = $self->[$__keepTimestamp] ? $self->_getTimestamp(\%hdr)
+                                         : $self->_setTimestamp;
       my $frame = Net::Packet::Frame->new(
          env       => $self->env,
          raw       => $raw,
-         timestamp => "$hdr{tv_sec}.$hdr{tv_usec}",
+         timestamp => $ts,
       ) or return undef;
 
       $self->_addToFramesSorted($frame) unless $self->[$__noStore];
@@ -586,21 +601,30 @@ __END__
 
 =head1 NAME
 
-Net::Packet::Dump - a tcpdump-like object providing frame capturing
+Net::Packet::Dump - a tcpdump-like object providing frame capturing and more
 
 =head1 SYNOPSIS
 
-   use Net::Packet::Dump;
+   require Net::Packet::Dump;
+   use Net::Packet::Consts qw(:dump);
 
    #
    # Example live capture (sniffer like)
    #
 
-   # Instanciate object, will start capturing from network
+   # Instanciate object
    my $dump = Net::Packet::Dump->new(
-      filter  => 'tcp',
-      noStore => 1,
+      mode          => NP_DUMP_MODE_ONLINE,
+      file          => 'live.pcap',
+      filter        => 'tcp',
+      promisc       => 1,
+      noStore       => 1,
+      keepTimestamp => 1,
+      unlinkOnClean => 0,
+      overwrite     => 1,
    );
+   # Start capture
+   $dump->start;
 
    while (1) {
       if (my $frame = $dump->next) {
@@ -611,20 +635,26 @@ Net::Packet::Dump - a tcpdump-like object providing frame capturing
       }
    }
 
+   # Cleanup
+   $dump->stop;
+   $dump->clean;
+
    #
    # Example offline analysis
    #
 
    my $dump2 = Net::Packet::Dump->new(
-      unlinkOnClean => 0,
+      mode          => NP_DUMP_MODE_OFFLINE,
       file          => 'existant-file.pcap',
+      unlinkOnClean => 0,
    );
 
    # Analyze the .pcap file, build an array of Net::Packet::Frame's
-   $dump->analyze;
+   $dump2->start;
+   $dump2->nextAll;
 
    # Browses captured frames
-   for ($dump->frames) {
+   for ($dump2->frames) {
       # Do what you want
       print $_->l2->print, "\n" if $_->l2;
       print $_->l3->print, "\n" if $_->l3;
@@ -632,21 +662,53 @@ Net::Packet::Dump - a tcpdump-like object providing frame capturing
       print $_->l7->print, "\n" if $_->l7;
    }
 
+   # Cleanup
+   $dump2->stop;
+   $dump2->clean;
+
+   #
+   # Example writing mode
+   #
+
+   my $dump3 = Net::Packet::Dump->new(
+      mode      => NP_DUMP_MODE_WRITER,
+      file      => 'write.pcap',
+      overwrite => 1,
+   );
+
+   $dump3->start;
+
+   # Build or capture some frames here
+   my $frame = Net::Packet::Frame->new;
+
+   # Write them
+   $dump3->write($frame);
+
+   # Cleanup
+   $dump3->stop;
+   $dump3->clean;
+
 =head1 DESCRIPTION
 
-This module is the capturing part of Net::Packet framework. It is basically a tcpdump process. When a capture starts, the tcpdump process is forked, and saves all traffic to a .pcap file. The parent process can call B<next>, B<nextAll> or B<analyze> to convert captured frames from .pcap file to B<Net::Packet::Frame>s.
+This module is the capturing part of Net::Packet framework. It is basically a tcpdump process. When a capture starts, the tcpdump process is forked, and saves all traffic to a .pcap file. The parent process can call B<next> or B<nextAll> to convert captured frames from .pcap file to B<Net::Packet::Frame>s.
 
 Then, you can call B<recv> method on your sent frames to see if a corresponding reply is waiting in the B<frames> array attribute of B<Net::Packet::Dump>.
 
-By default, if you use this module to analyze frames you've sent (very likely ;)), and you've sent those frames at layer 4 (using B<Net::Packet::DescL4>) (for example), lower layers will be wiped on storing in B<frames> array. This behaviour can be disabled using B<noLayerWipe> attribute.
+By default, if you use this module to analyze frames you've sent (very likely ;)), and you've sent those frames at layer 4 (using B<Net::Packet::DescL4>) (for example), lower layers will be wiped on storing in B<frames> array. This behaviour can be disabled by using B<noLayerWipe> attribute.
+
+Since B<Net::Packet> 3.00, it is also possible to create complete .pcap files, thanks to the writer mode (see B<SYNOPSIS>).
 
 =head1 ATTRIBUTES
 
 =over 4
 
+=item B<dev>
+
+By default, this attribute is set to B<dev> found in default B<$Env> object. You can overwrite it by specifying another one in B<new> constructor.
+
 =item B<env>
 
-Stores a B<Net::Packet::Env> object. It is used in B<start> method, for example. The default is to use the global B<$Env> object created when using B<Net::Packet>.
+Stores a B<Net::Packet::Env> object. It is used in B<start> method, for example. The default is to use the global B<$Env> object created when using B<Net::Packet::Env>.
 
 =item B<file>
 
@@ -654,31 +716,39 @@ Where to save captured frames. By default, a random name file is chosen, named l
 
 =item B<filter>
 
-A pcap filter to restrain what to capture. It also works in offline mode, to analyze only what you want, and not all traffic. Default to capture all traffic. WARNING: every time a packet passes this filter, and the B<next> method is called, the internal counter used by b<timeoutOnNext> is reset. So the B<timeout> attribute can only be used if you now exactly that the filter will only catch what you want and not perturbating traffic.
+A pcap filter to restrain what to capture. It also works in offline mode, to analyze only what you want, and not all traffic. Default to capture all traffic. WARNING: every time a packet passes this filter, and the B<next> method is called, the internal counter used by b<timeoutOnNext> is reset. So the B<timeout> attribute can only be used if you know exactly that the filter will only catch what you want and not perturbating traffic.
 
 =item B<overwrite>
 
 If the B<file> exists, setting this to 1 will overwrite it. Default to not overwrite it.
 
-=item B<timeout>
-
-Is auto set to 1 when a timeout has occured. It is not set to 0 automatically, you need to do it yourself.
-
 =item B<timeoutOnNext>
 
 Each time B<next> method is called, an internal counter is incremented if no frame has been captured. When a frame is captured (that is, a frame passed the pcap filter), the B<timeout> attribute is reset to 0. When the counter reaches the value of B<timeoutOnNext>, the B<timeout> attribute is set to 1, meaning no frames have been captured during the specified amount of time. Default to 3 seconds.
 
+=item B<timeout>
+
+Is auto set to 1 when a timeout has occured. It is not reset to 0 automatically, you need to do it yourself.
+
+=item B<promisc>
+
+If you want to capture in promiscuous mode, set it to 1. Default to 0.
+
+=item B<link>
+
+This attribute tells which datalink type is used for .pcap files.
+
 =item B<nextFrame>
 
-This one stores the latest received frame after a call to B<next> method. If a B<next> call is done, and no frame is received, this attribute is set to undef.
+This one stores a pointer to the latest received frame after a call to B<next> method. If a B<next> call is done, and no frame is received, this attribute is set to undef.
 
 =item B<isRunning>
 
-When the capturing process is running, this is set to 1. So, when B<start> method has been called, it is set to 1, and when B<stop> method is called, set to 0.
+When the capturing process is running (B<start> has been called), this is set to 1. So, when B<start> method has been called, it is set to 1, and when B<stop> method is called, set to 0.
 
-=item B<unlinkOnDestroy>
+=item B<unlinkOnClean>
 
-When the B<Net::Packet::Dump> object goes out of scope, the B<DESTROY> method is called, and if this attribute is set to 1, the B<file> is removed. BEWARE: default to 1.
+When the B<clean> method is called, and this attribute is set to 1, the B<file> is deleted from disk. Set it to 0 to avoid this behaviour. BEWARE: default to 1.
 
 =item B<noStore>
 
@@ -688,17 +758,29 @@ If you set this attribute to 1, frames will not be stored in B<frames> array. It
 
 As explained in DESCRIPTION, if you send packets at layer 4, layer 2 and 3 are not keeped when stored in B<frames>. The same is true when sending at layer 3 (layer 2 is not kept). Default to wipe those layers. WARNING: if you set it to 1, and you need the B<recv> method from B<Net::Packet::Frame>, it will fail. In fact, this is a speed improvements, that is in order to find matching frame for your request, they are stored in a hash, using layer as keys (B<getKey> and B<getKeyReverse> are used to get keys from each layer. So, if you do not wipe layers, a key will be used to store the frame, but another will be used to search for it, and no match will be found. This is a current limitation I'm working on to remove.
 
-=item B<noEnvSet>
+=item B<mode>
 
-By default, when a B<Net::Packet::Dump> object is created, the default B<$Env> object has its B<dump> attribute pointing to it. If you do not want this behaviour, you can disable it by setting it to 1. Default to 0.
+When you crate a B<Net::Packet::Dump>, you have 3 possible modes : online, offline and writer. You need to load constants from B<Net::Packet::Consts> to have access to that (see B<SYNOPSIS>). The three constants are:
 
-=item B<frames>
+NP_DUMP_MODE_ONLINE
 
-Stores all analyzed frames found in a pcap file in this array.
+NP_DUMP_MODE_OFFLINE
 
-=item B<framesSorted>
+NP_DUMP_MODE_WRITER
 
-Stores all analyzed frames found in a pcap file in this hash, using keys to store and search related packet request/replies.
+Default behaviour is to use online mode.
+
+=item B<keepTimestamp>
+
+Sometimes, when frames are captured and saved to a .pcap file, timestamps sucks. That is, you send a frame, and receive the reply, but your request appear to have been sent after the reply. So, to correct that, you can use B<Net::Packet> framework own timestamping system. The default is 0. Set it manually to 1 if you need original .pcap frames timestamps.
+
+=item B<frames> [is an arrayref]
+
+Stores all analyzed frames found in a pcap file in this arrayref.
+
+=item B<framesSorted> [is an hashref]
+
+Stores all analyzed frames found in a pcap file in this hashref, using keys to store and search related frames request/replies.
 
 =back
 
@@ -710,39 +792,63 @@ Stores all analyzed frames found in a pcap file in this hash, using keys to stor
 
 Object contructor. Default values for attributes:
 
+dev:             $Env->dev
+
 env:             $Env
 
 file:            "netpacket-tmp-$$.@{[getRandom32bitsInt()]}.pcap"
 
-filter:          ""
+filter:          ''
 
 overwrite:       0
 
 timeout:         0
 
+promisc:         0
+
 timeoutOnNext:   3
 
 isRunning:       0
 
-unlinkOnDestroy: 1
+unlinkOnClean:   1
 
 noStore:         0
 
 noLayerWipe:     0
 
-noEnvSet:        0
+mode:            NP_DUMP_MODE_ONLINE
+
+keepTimestamp:   0
+
+=item B<isModeOnline>
+
+=item B<isModeOffline>
+
+=item B<isModeWriter>
+
+Returns 1 if B<Net::Packet::Dump> object is respectively set to online, offline or writer mode. 0 otherwise.
 
 =item B<start>
 
-Forks the tcpdump-like process that do frame capturing saved to a file. It does not forks a new process if the specified B<file> attribute exists, and B<overwrite> attributes is set to 0. It also sets B<isRunning> to 1 if a process is forked.
+You MUST manually call this method to start frame capture, whatever mode you are in. In online mode, it will fork a tcpdump-like process to save captured frames to a .pcap file. It will not overwrite an existing file by default, use B<overwrite> attribute for that. In offline mode, it will only provide analyzing methods. In writer mode, it will only provide writing methods for frames. It will set B<isRunning> attribute to 1 when called.
+
+=item B<stop>
+
+You MUST manually call this method to stop the process. In online mode, it will not remove the generated .pcap file, you MUST call B<clean> method. In offline mode, it will to nothing. In writer mode, it will call B<Net::Pcap::dump_close> method. Then, it will set B<isRunning> attribute to 0.
+
+=item B<isFather>
+
+=item B<isSon>
+
+These methods will tell you if your current process is respectively the father, or son process of B<Net::Packet::Dump> object.
+
+=item B<clean>
+
+You MUST call this method manually. It will never be called by B<Net::Packet> framework. This method will remove the generated .pcap file in online mode if the B<unlinkOnClean> attribute is set to 1. In other modes, it will do nothing.
 
 =item B<getStats>
 
 Tries to get packet statistics on an open descriptor. It returns a reference to a hash that has to following fields: B<ps_recv>, B<ps_drop>, B<ps_ifdrop>.
-
-=item B<stop>
-
-Kills the tcpdump-like process, and sets B<isRunning> to 0.
 
 =item B<flush>
 
@@ -750,17 +856,27 @@ Will removed all analyzed frames from B<frames> array and B<framesSorted> hash. 
 
 =item B<next>
 
-Returns the next captured frames; undef if none found in .pcap file. In all cases, B<nextFrame> attribute is set (either to the captured frame or undef). Each time this method is run, a comparison is done to see if no frame has been captured during B<timeoutOnNext> amount of seconds. If so, B<timeout> attribute is set to 1 to reflect the pending timeout. When a frame is received, it is stored in B<frames> array, and in B<framesSorted> hash, used to quickly B<recv> it (see B<Net::Packet::Frame>), and internal counter for time elapsed since last received packet is reset.
+Returns the next captured frame; undef if none found in .pcap file. In all cases, B<nextFrame> attribute is set (either to the captured frame or undef). Each time this method is run, a comparison is done to see if no frame has been captured during B<timeoutOnNext> amount of seconds. If so, B<timeout> attribute is set to 1 to reflect the pending timeout. When a frame is received, it is stored in B<frames> arrayref, and in B<framesSorted> hashref, used to quickly B<recv> it (see B<Net::Packet::Frame>), and internal counter for time elapsed since last received packet is reset.
 
 =item B<nextAll>
 
-=item B<analyze>
-
 Calls B<next> method until it returns undef (meaning no new frame waiting to be analyzed from pcap file).
+
+=item B<write> (scalar)
+
+In writer mode, this method takes a B<Net::Packet::Frame> as a parameter, and writes it to the .pcap file. Works only in writer mode.
+
+=item B<timeoutReset>
+
+Used to reset manually the B<timeout> attribute. This is a helper method.
 
 =item B<framesFor> (scalar)
 
 You pass a B<Net::Packet::Frame> has parameter, and it returns an array of all frames relating to the connection. For example, when you send a TCP SYN packet, this method will return TCP packets relating to the used source/destination IP, source/destination port, and also related ICMP packets.
+
+=item B<framesSorted> (scalar)
+
+Method mostly used internally to store in a hashref a captured frame. This is used to retrieve it quickly on B<recv> call.
 
 =back
 

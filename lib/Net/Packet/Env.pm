@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.2.2.8 2006/06/04 13:45:18 gomor Exp $
+# $Id: Env.pm,v 1.2.2.9 2006/10/29 12:17:34 gomor Exp $
 #
 package Net::Packet::Env;
 use strict;
@@ -24,8 +24,8 @@ our @AS = qw(
    errString
    noFrameAutoDesc
    noFrameAutoDump
-   noDumpAutoSet
    noDescAutoSet
+   noDumpAutoSet
    _dnet
 );
 our @AO = qw(
@@ -43,8 +43,8 @@ sub new {
       debug           => 0,
       noFrameAutoDesc => 0,
       noFrameAutoDump => 0,
-      noDumpAutoSet   => 0,
       noDescAutoSet   => 0,
+      noDumpAutoSet   => 0,
       err             => 0,
       errString       => '',
       @_,
@@ -127,7 +127,7 @@ Net::Packet::Env - environment object used for frame capture/injection
 
 =head1 SYNOPSIS
 
-   use Net::Packet::Env;
+   use Net::Packet::Env qw($Env);
 
    # Get default values from system
    my $env = Net::Packet::Env->new;
@@ -139,11 +139,10 @@ Net::Packet::Env - environment object used for frame capture/injection
    print "mac: ", $env->mac, "\n";
    print "ip : ", $env->ip,  "\n" if $env->ip;
    print "ip6: ", $env->ip6, "\n" if $env->ip6;
-   print "promisc: ", $env->promisc, "\n";
 
 =head1 DESCRIPTION
 
-Basically, this module is used to tell where to inject a frame, and how to capture a frame.
+Basically, this module is used to tell where to inject a frame, and B<Net::Packet::Frame> default behaviour regarding auto creation of B<Net::Packet::Desc> and B<Net::Packet::Dump> objects.
 
 =head1 ATTRIBUTES
 
@@ -151,23 +150,19 @@ Basically, this module is used to tell where to inject a frame, and how to captu
 
 =item B<dev>
 
-The device on which frames will be injected/captured.
-
-=item B<mac>
-
-The MAC address used to build injected frames.
+The device on which frames will be injected.
 
 =item B<ip>
 
-The IPv4 address used to build injected frames.
+The IPv4 address of B<dev>. It will be used by default for all created frames.
 
 =item B<ip6>
 
-The IPv6 address used to build injected frames.
+The IPv6 address of B<dev>. It will be used by default for all created frames.
 
-=item B<link>
+=item B<mac>
 
-The link type of the capturing process (see B<Net::Packet::Dump>). It will be set automatically when a capturing device is open. Usually used internally.
+The MAC address of B<dev>. It will be used by default for all created frames.
 
 =item B<desc>
 
@@ -177,13 +172,21 @@ The B<Net::Packet::Desc> object used to inject frames to network.
 
 The B<Net::Packet::Dump> object used to receive frames from network.
 
-=item B<promisc>
+=item B<noFrameAutoDesc>
 
-This one is used to tell the tcpdump-like process (see B<Net::Packet::Dump>) to go into promiscuous mode or not. Note: the device may be already in promiscuous mode, so even when you set it to 0, you may be in the situation to capture in promiscuous mode.
+This attribute controls B<Net::Packet::Frame> behaviour regarding B<Net::Packet::Desc> autocreation. If set to 0, when a B<Net::Packet::Frame> is created for the first time, a B<Net::Packet::Desc> object will be created if none has been set in B<desc> attribute for default B<$Env> object. Setting it to 1 avoids this behaviour.
 
-=item B<filter>
+=item B<noFrameAutoDump>
 
-When set, the pcap filter that'll be used for packet captures will be this one. It must be manually set if you want this feature. Default is to capture all traffic.
+Same as above, but for B<Net::Packet::Dump> object.
+
+=item B<noDescAutoSet>
+
+This attribute controls B<Net::Packet::Desc> behaviour regarding global B<$Env> autosetting behaviour. If set to 0, when a B<Net::Packet::Desc> is created for the first time, the created B<Net::Packet::Desc> object will have a pointer to it stored in B<desc> attribute of B<$Env> default object. Setting it to 1 avoids this behaviour.
+
+=item B<noDumpAutoSet>
+
+Same as abose, but for B<Net::Packet::Dump> object.
 
 =item B<debug>
 
@@ -199,19 +202,51 @@ The environment debug directive. Set it to a number greater than 0 to increase t
 
 Object constructor. You can pass attributes that will overwrite default ones. Default values:
 
-dev: autoDev() - the one tcpdump get without -i parameter.
+debug:           0
 
-mac: autoMac() - from dev, MAC address the default device has.
+noFrameAutoDesc: 0
 
-ip: autoIp() - from dev, IPv4 address the default device has.
+noFrameAutoDump: 0
 
-ip6: autoIp6() - from dev, IPv6 address the default device has.
+noDescAutoSet:   0
 
-promisc: 0
+noDumpAutoSet:   0
 
-link: undef
+dev:             if not user provided, default interface is used, by calling B<getDevInfo> method. If user provided, all B<ip>, B<ip6> and B<mac> attributes will be used for that B<dev>.
 
-See B<Net::Packet::Utils> for more about auto* sub routines.
+ip:              if not user provided, default interface IP is used, by calling B<getIp> method. If user provided, it is overwritten by the user.
+
+ip6:             if not user provided, default interface IPv6 is used, by calling B<getIp6> method. If user provided, it is overwritten by the user.
+
+mac:             if not user provided, default interface MAC is used, by calling B<getMac> method. If user provided, it is overwritten by the user.
+
+=item B<getDevInfo> [ (scalar) ]
+
+By default, network device to use is the one used by default gateway. If you provide an IP address as a parameter, the interface used will be the one which have direct access to this IP address.
+
+=item B<getDevInfoFor> (scalar)
+
+Will set internal attributes for network interface passed as a parameter. Those internal attributes are used to get IP, IPv6 and MAC attributes.
+
+=item B<updateDevInfo> (scalar)
+
+This is a helper method. You pass an IP address as a parameter, and all attributes for elected network interface will be updated (B<dev>, B<ip>, B<ip6>, B<mac>).
+
+=item B<getDev>
+
+Returns network interface, by looking at internal attribute.
+
+=item B<getMac>
+
+Returns MAC address, by looking at internal attribute.
+
+=item B<getIp>
+
+Returns IP address, by looking at internal attribute.
+
+=item B<getIp6>
+
+Returns IPv6 address, by looking at internal attribute.
 
 =back
 

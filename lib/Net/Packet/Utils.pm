@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.2.2.2 2006/05/31 16:43:41 gomor Exp $
+# $Id: Utils.pm,v 1.2.2.3 2006/10/29 13:24:59 gomor Exp $
 #
 package Net::Packet::Utils;
 use strict;
@@ -33,7 +33,7 @@ our %EXPORT_TAGS = (
 );
 
 use Socket;
-use Socket6;
+use Socket6 qw(NI_NUMERICHOST NI_NUMERICSERV inet_pton inet_ntop);
 require Net::IPv6Addr;
 
 sub getHostIpv4Addr {

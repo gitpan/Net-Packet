@@ -1,5 +1,5 @@
 #
-# $Id: Desc.pm,v 1.3.2.6 2006/06/04 13:44:36 gomor Exp $
+# $Id: Desc.pm,v 1.3.2.7 2006/10/29 14:26:24 gomor Exp $
 #
 package Net::Packet::Desc;
 use strict;
@@ -78,13 +78,33 @@ A descriptor is required when you want to send frames over network.
 
 =over 4
 
-=item B<env>
+=item B<dev>
 
-A reference to a B<Net::Packet::Env> object. By default, initialized to $Net::Packet::Env variable.
+Network device to use to send frames. Default to use B<dev> set in default B<$Env> object.
 
-=item B<noEnvSet>
+=item B<ip>
 
-When a new object is created, the B<Net::Packet> global B<$Env> object as its B<desc> attribute set to this newly created B<Desc> object. Setting it to 1 avoids this. Default is 0.
+Same as above for IP. This is the source IP address to use.
+
+=item B<ip6>
+
+Same as above for IPv6. This is the source IPv6 address to use.
+
+=item B<mac>
+
+Same as above for MAC. This is the source MAC address to use.
+
+=item B<target>
+
+Used to create a B<Net::Packet::DescL3> and B<Net::Packet::DescL4>. At these layers, one MUST specifiy the target IP address to tell kernel where to send frames.
+
+=item B<protocol>
+
+This is the transport protocol to use (TCP, UDP, ...). Used in B<Net::Packet::DescL4> objects. Default to TCP.
+
+=item B<family>
+
+Same as abose, to tell which network protocol to use (IPv4, IPv6).
 
 =back
 
@@ -94,7 +114,7 @@ When a new object is created, the B<Net::Packet> global B<$Env> object as its B<
 
 =item B<send> (scalar)
 
-Send the raw data passed as parameter to the B<env> object.
+Send the raw data passed as a parameter.
 
 =item B<close>
 

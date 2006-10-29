@@ -3,7 +3,7 @@ BEGIN { plan(tests => 1) }
 
 skip(! $ENV{NP_DO_TEST6} ? 'Skip since env variable NP_DO_TEST6=0' : '', sub {
    my $ok;
-   use Net::Packet qw($Env);
+   use Net::Packet::Env qw($Env);
    use Net::Packet::Consts qw(:eth :ipv6);
 
    $Env->dev($ENV{NP_ETH_DEV});
@@ -44,6 +44,9 @@ skip(! $ENV{NP_DO_TEST6} ? 'Skip since env variable NP_DO_TEST6=0' : '', sub {
 #     }
 #  }
    $ok++; # XXX: cannot verify reply is ok for now, need ICMPv6
+
+   $Env->dump->stop;
+   $Env->dump->clean;
 
    $ok;
 });

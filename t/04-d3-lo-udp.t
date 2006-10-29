@@ -3,7 +3,7 @@ BEGIN { plan(tests => 1) }
 
 skip(! $ENV{NP_DO_TEST} ? 'Skip since env variable NP_DO_TEST=0' : '', sub {
    my $ok;
-   use Net::Packet qw($Env);
+   use Net::Packet::Env qw($Env);
    use Net::Packet::Consts qw(:ipv4);
 
    $Env->dev($ENV{NP_LO_DEV});
@@ -32,6 +32,9 @@ skip(! $ENV{NP_DO_TEST} ? 'Skip since env variable NP_DO_TEST=0' : '', sub {
          last;
       }
    }
+
+   $Env->dump->stop;
+   $Env->dump->clean;
 
    $ok;
 });
