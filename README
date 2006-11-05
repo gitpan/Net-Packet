@@ -1,9 +1,3 @@
-Tested ok against (only x86 architectures supported for now):
-
-   - FreeBSD 6.0 - Perl 5.8.7 - libpcap 0.9.1
-   - Linux 2.6.x - Perl 5.8.5 - libpcap 0.8.3 (Gentoo)
-   - Cygwin - Windows XP SP2 - Perl 5.8.5 (not all functions were tested)
-
 Net::Packet is now part of the following systems/distributions:
 
    - NetBSD pkgsrc
@@ -41,13 +35,15 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Perl v5.6.1
-  Class::Gomor::Hash
-  Net::IPv6Addr
+  Class::Gomor
   Net::Pcap
-  Socket6
-  Time::HiRes
-  Bit::Vector
   Net::Write
+  Net::Libdnet
+  Time::HiRes
+  Net::IPv6Addr
+  Socket6
+  Bit::Vector
+  Storable
 
 GETTING HELP
 
@@ -58,12 +54,10 @@ LIMITATIONS
 
 Does NOT work under big endian architecture.
 
-If auto* subs do not work, you will need to set $Env->dev, $Env->ip, $Env->mac 
-manually for each of your Net::Packet programs.
-
-Performances (memory usage, object creation speed) maye be quite limited for 
+Performances (memory usage, object creation speed) may be quite limited for 
 now. I will work on it in the near (or not) future. So this module can only 
-handle a few thousand packets on a 512MB RAM machine.
+handle a few thousand packets on a 512MB RAM machine. Since Net::Packet 3.00, 
+performances are better, with some memory optimizations.
 
 COPYRIGHT AND LICENSE
 

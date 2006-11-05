@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.2.2.9 2006/10/29 12:17:34 gomor Exp $
+# $Id: Env.pm,v 1.2.2.13 2006/11/05 15:28:28 gomor Exp $
 #
 package Net::Packet::Env;
 use strict;
@@ -10,7 +10,8 @@ require Class::Gomor::Array;
 our @ISA = qw(Exporter Class::Gomor::Array);
 our @EXPORT_OK = qw($Env);
 
-use Net::Libdnet;
+use Carp qw(croak);
+require Net::Libdnet;
 require Net::IPv6Addr;
 
 our @AS = qw(
@@ -18,6 +19,9 @@ our @AS = qw(
    ip
    ip6
    mac
+   subnet
+   gatewayIp
+   gatewayMac
    desc
    dump
    err
@@ -35,6 +39,17 @@ __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 no strict 'vars';
+
+BEGIN {
+   my $osname = {
+      cygwin  => [ \&_getDevWin32, ],
+      MSWin32 => [ \&_getDevWin32, ],
+   };
+
+   *getDev = $osname->{$^O}->[0] || \&_getDevOther;
+}
+
+use Net::Packet::Utils qw(getGatewayIp);
 
 our $Env = __PACKAGE__->new;
 
@@ -54,9 +69,11 @@ sub new {
       ? do { $self->[$__dev] = $self->getDevInfoFor($self->[$__dev]) }
       : do { $self->[$__dev] = $self->getDevInfo                     };
 
-   $self->[$__mac] = $self->getMac unless $self->[$__mac];
-   $self->[$__ip]  = $self->getIp  unless $self->[$__ip];
-   $self->[$__ip6] = $self->getIp6 unless $self->[$__ip6];
+   $self->[$__mac]        = $self->getMac    unless $self->[$__mac];
+   $self->[$__subnet]     = $self->getSubnet unless $self->[$__subnet];
+   $self->[$__ip]         = $self->getIp     unless $self->[$__ip];
+   $self->[$__ip6]        = $self->getIp6    unless $self->[$__ip6];
+   $self->[$__gatewayIp]  = getGatewayIp()   unless $self->[$__gatewayIp];
 
    $self;
 }
@@ -76,16 +93,44 @@ sub getDevInfoFor {
 
 sub updateDevInfo {
    my $self = shift;
-   $self->getDevInfo(shift());
-   $self->[$__dev] = $self->getDev;
-   $self->[$__ip]  = $self->getIp;
-   $self->[$__ip6] = $self->getIp6;
-   $self->[$__mac] = $self->getMac;
+   my ($ip) = @_;
+   $self->getDevInfo($ip);
+   $self->[$__dev]       = $self->getDev;
+   $self->[$__ip]        = $self->getIp;
+   $self->[$__ip6]       = $self->getIp6;
+   $self->[$__mac]       = $self->getMac;
+   $self->[$__subnet]    = $self->getSubnet;
+   $self->[$__gatewayIp] = getGatewayIp($ip);
 }
 
-sub getDev { shift->[$___dnet]->{name} || (($^O eq 'linux') ? 'lo' : 'lo0') }
+sub _getDevWin32 {
+   my $self = shift;
+   croak("@{[(caller(0))[3]]}: unable to find a suitable device\n")
+      unless $self->[$___dnet]->{name};
+   my %dev;
+   my $err;
+   require Net::Pcap;
+   Net::Pcap::findalldevs(\%dev, \$err);
+   croak("@{[(caller(0))[3]]}: Net::Pcap::findalldevs() error: $err\n")
+      if $err;
+   my $n;
+   for (reverse sort keys %dev) {
+      next if /GenericDialupAdapter/i;
+      s/\\/\\\\/g;
+      $dev{$_} = 'eth'.$n++;
+   }
+   %dev = map { $dev{$_} => $_ } sort keys %dev;
+   my $eth = $self->[$___dnet]->{name};
+   $dev{$eth};
+}
 
-sub getMac { shift->[$___dnet]->{link_addr} || 'ff:ff:ff:ff:ff:ff' }
+sub _getDevOther {
+   shift->[$___dnet]->{name} || (($^O eq 'linux') ? 'lo' : 'lo0');
+}
+
+sub getSubnet { shift->[$___dnet]->{addr} || '127.0.0.1/8'            }
+
+sub getMac    { shift->[$___dnet]->{link_addr} || 'ff:ff:ff:ff:ff:ff' }
 
 sub getIp {
    my $ip = shift->[$___dnet]->{addr} || '127.0.0.1';
@@ -164,6 +209,18 @@ The IPv6 address of B<dev>. It will be used by default for all created frames.
 
 The MAC address of B<dev>. It will be used by default for all created frames.
 
+=item B<subnet>
+
+The subnet address of B<dev>. It will be set automatically.
+
+=item B<gatewayIp>
+
+The gateway IP address of B<dev>. It is set automatically under all platforms.
+
+=item B<gatewayMac>
+
+The gateway MAC address of B<dev>. It will not be set automatically. Due to the implementation of ARP lookup within B<Net::Packet>, we can't do it within this module. It is done within B<Net::Packet::DescL3> under Windows, to automatically build the layer 2 header.
+
 =item B<desc>
 
 The B<Net::Packet::Desc> object used to inject frames to network.
@@ -230,7 +287,7 @@ Will set internal attributes for network interface passed as a parameter. Those 
 
 =item B<updateDevInfo> (scalar)
 
-This is a helper method. You pass an IP address as a parameter, and all attributes for elected network interface will be updated (B<dev>, B<ip>, B<ip6>, B<mac>).
+This is a helper method. You pass an IP address as a parameter, and all attributes for elected network interface will be updated (B<dev>, B<ip>, B<ip6>, B<mac>, B<subnet>, B<gatewayIp>).
 
 =item B<getDev>
 
@@ -239,6 +296,10 @@ Returns network interface, by looking at internal attribute.
 =item B<getMac>
 
 Returns MAC address, by looking at internal attribute.
+
+=item B<getSubnet>
+
+Returns subnet address, by looking at internal attribute.
 
 =item B<getIp>
 

@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.2.2.3 2006/10/29 13:24:59 gomor Exp $
+# $Id: Utils.pm,v 1.2.2.9 2006/11/05 15:28:40 gomor Exp $
 #
 package Net::Packet::Utils;
 use strict;
@@ -26,6 +26,9 @@ our @EXPORT_OK = qw(
    inet6Ntoa
    explodeIps
    explodePorts
+   getGatewayIp
+   getGatewayMac
+   getIpMac
 );
 
 our %EXPORT_TAGS = (
@@ -34,7 +37,10 @@ our %EXPORT_TAGS = (
 
 use Socket;
 use Socket6 qw(NI_NUMERICHOST NI_NUMERICSERV inet_pton inet_ntop);
+require Net::Libdnet;
+require Net::IPv4Addr;
 require Net::IPv6Addr;
+require Net::Packet::Env;
 
 sub getHostIpv4Addr {
    my $name  = shift;
@@ -147,6 +153,118 @@ sub explodeIps {
    @ips;
 }
 
+sub _getMacFromCache { Net::Libdnet::arp_get(shift()) }
+
+sub getGatewayIp { Net::Libdnet::route_get(shift() || '1.1.1.1') || '0.0.0.0' }
+
+sub getGatewayMac {
+   my ($ip) = @_;
+   my $mac = _getMacFromCache($ip) || _arpLookup($ip);
+   $mac;
+}
+
+sub getIpMac {
+   my ($ip) = @_;
+
+   my $mac = _getMacFromCache($ip);
+   return $mac if $mac;
+
+   my $env = Net::Packet::Env->new;
+   $env->updateDevInfo($ip);
+
+   if (Net::IPv4Addr::ipv4_in_network($env->subnet, $ip)) {
+      $mac = _arpLookup($ip, $env);
+   }
+   else {
+      $mac = getGatewayMac($env->gatewayIp);
+   }
+   $mac;
+}
+
+sub _arpLookup {
+   my ($ip, $env) = @_;
+
+   require Net::Packet::DescL2;
+   require Net::Packet::Dump;
+   require Net::Packet::Frame;
+   require Net::Packet::ETH;
+   require Net::Packet::ARP;
+   use Net::Packet::Consts qw(:eth :arp);
+
+   $env = Net::Packet::Env->new unless $env;
+
+   my $pEnv = $env->cgClone;
+   $pEnv->updateDevInfo($ip);
+   $pEnv->desc(undef);
+   $pEnv->dump(undef);
+   $pEnv->noFrameAutoDesc(1);
+   $pEnv->noFrameAutoDump(1);
+   $pEnv->noDescAutoSet(1);
+   $pEnv->noDumpAutoSet(1);
+   $pEnv->debug(0);
+
+   my $d2 = Net::Packet::DescL2->new(
+      dev => $pEnv->dev,
+      ip  => $pEnv->ip,
+      mac => $pEnv->mac,
+   );
+
+   my $dump = Net::Packet::Dump->new(
+      dev       => $pEnv->dev,
+      env       => $pEnv,
+      overwrite => 1,
+      filter    => 'arp and dst '.$pEnv->ip,
+   );
+   $dump->start;
+   $pEnv->dump($dump);
+
+   my $eth = Net::Packet::ETH->new(
+      src  => $pEnv->mac,
+      dst  => 'ff:ff:ff:ff:ff:ff',
+      type => NP_ETH_TYPE_ARP,
+   );
+
+   my $arp = Net::Packet::ARP->new(
+      dstIp  => $ip,
+      srcIp  => $pEnv->ip,
+      hType  => NP_ARP_HTYPE_ETH,
+      pType  => NP_ARP_PTYPE_IPv4,
+      hSize  => NP_ARP_HSIZE_ETH,
+      pSize  => NP_ARP_PSIZE_IPv4,
+      opCode => NP_ARP_OPCODE_REQUEST,
+   );
+
+   my $frame = Net::Packet::Frame->new(
+      l2 => $eth,
+      l3 => $arp,
+   );
+
+   my $mac;
+   for (1..3) {
+      $frame->send;
+      until ($dump->timeout) {
+         if (my $reply = $frame->recv) {
+            $mac = $reply->l3->src;
+            last;
+         }
+      }
+
+      last if $mac;
+      $dump->timeoutReset;
+   }
+
+   $d2->close;
+   $dump->stop;
+   $dump->clean;
+
+   if ($mac) {
+      Net::Libdnet::arp_add($ip, $mac);
+      return $mac;
+   }
+
+   '00:00:00:00:00:00';
+}
+
 1;
 
 =head1 NAME
@@ -236,6 +354,18 @@ Compute the INET checksum used in various layers.
 =item B<explodeIps>
 
 See B<SYNOPSIS>.
+
+=item B<getGatewayIp> [ (scalar) ]
+
+Returns the gateway IP address for IP address passed as a parameter. If none provided, returns the default gateway IP address.
+
+=item B<getGatewayMac> (scalar)
+
+Returns the gateway MAC address of specified gateway IP address. It first looks up from ARP cache table, then tries an ARP lookup if none was found, and adds it to ARP cache table.
+
+=item B<getIpMac> (scalar)
+
+Returns the MAC address of specified IP address. It first looks up from ARP cache table. If nothing is found, it checks to see if the specified IP address is on the same subnet. If not, it returns the gateway MAC address, otherwise does an ARP lookup. Then, the ARP cache table is updated if an ARP resolution has been necessary.
 
 =back
 

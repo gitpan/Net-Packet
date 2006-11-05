@@ -1,5 +1,16 @@
 Revision history for Perl extension Net::Packet.
 
+3.01 Sun Nov  5 16:27:50 CET 2006
+  - NEW: ported to Windows ActivePerl
+  - Utils: new subs: getGatewayIp, getGatewayMac, getIpMac
+  - Env: new attributes: subnet, gatewayIp, gatewayMac
+  - Desc: new attributes: gatewayIp, gatewayMac
+  => gatewayIp is automatically set, but not gatewayMac, due to the 
+     nature of the ARP lookup implementation.
+  - DescL3: under Windows, the layer 2 (ethernet) is automatically built, 
+            so using DescL3 is the same as using DescL3 under Unix/Linux 
+            systems.
+
 3.00 Sun Oct 29 15:31:06 CET 2006
   - Net::Packet::Dump: added keepTimestamp attribute to keep original pcap 
                        timestamp. Default is to not keep original and use our 

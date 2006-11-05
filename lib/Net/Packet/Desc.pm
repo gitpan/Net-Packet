@@ -1,5 +1,5 @@
 #
-# $Id: Desc.pm,v 1.3.2.7 2006/10/29 14:26:24 gomor Exp $
+# $Id: Desc.pm,v 1.3.2.10 2006/11/05 15:28:13 gomor Exp $
 #
 package Net::Packet::Desc;
 use strict;
@@ -17,7 +17,10 @@ our @AS = qw(
    ip
    ip6
    mac
+   gatewayIp
+   gatewayMac
    target
+   targetMac
    protocol
    family
    _io
@@ -32,6 +35,7 @@ sub new {
       ip  => $Env->ip,
       ip6 => $Env->ip6,
       mac => $Env->mac,
+      gatewayIp => $Env->gatewayIp,
       @_,
    );
 
@@ -40,6 +44,8 @@ sub new {
                           "mac: [@{[$self->mac]}]");
    $self->cgDebugPrint(1, "ip6: [@{[$self->ip6]}]")
       if $self->ip6;
+   $self->cgDebugPrint(1, "gatewayIp:  [@{[$self->gatewayIp]}]")
+      if $self->gatewayIp;
 
    $Env->desc($self) unless $Env->noDescAutoSet;
 
@@ -94,9 +100,21 @@ Same as above for IPv6. This is the source IPv6 address to use.
 
 Same as above for MAC. This is the source MAC address to use.
 
+=item B<gatewayIp>
+
+Same as above, for gateway IP address.
+
+=item B<gatewayMac>
+
+Same as above, for gateway MAC address. It is not automatically set here. It is automatically set only under Windows, when using a B<Net::Packet::DescL3> object.
+
 =item B<target>
 
 Used to create a B<Net::Packet::DescL3> and B<Net::Packet::DescL4>. At these layers, one MUST specifiy the target IP address to tell kernel where to send frames.
+
+=item B<targetMac>
+
+Used to automatically build layer 2 when using a B<Net::Packet::DescL3> object under Windows.
 
 =item B<protocol>
 
