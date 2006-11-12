@@ -1,5 +1,38 @@
 Revision history for Perl extension Net::Packet.
 
+3.20 Sun Nov 12 23:02:09 CET 2006
+  - NEW: support for PPPoE, PPP, PPPLCP, LLC, and begin the work for CDP
+  - NEW: Frame->new can now return an array ref of decoded frames, to handle 
+         new layers, and such things as IPv6 within IPv4.
+         See doFrameReturnList from Env.
+         With this new scheme, the behaviour from unpacking VLAN or ICMPv4 
+         has changed. Old behaviour remains the same, but if you set 
+         doFrameReturnList to true (not by default), your programs will need 
+         updating.
+  - NEW: all layers: be able to create layers without having the need to 
+                     build a full frame
+  - new: Frame: print() and dump() methods, encapsulate attribute
+  - new: Consts: new constants
+  - new: Layer: isLayer2(), isLayer3(), isLayer4(), isLayer7(),
+                getPayloadLength()
+  - new: Utils: debugDeviceList()
+  - new: Env: doFrameReturnList, noFramePadding, doIPv4Checksum,
+              noFrameComputeChecksums, noFrameComputeLengths,
+              doMemoryOptimizations
+  - update: all layers: rewrite of print() methods
+  - update: TCP: optimizations on recv() method
+  - removed: Frame: noPadding attribute, moved to Env noFramePadding
+  - removed: Frame: doChecksum attribute, moved to Env doIPv4Checksum
+  - bugfix: Env: in getSubnet()
+  - bugfix: Env: mapping between dnet interface and WinPcap interface should 
+                 now work
+  - bugfix: Env: no IPv6 under Windows for now
+  - bugfix: ETH: in isTypeIp()
+  - bugfix: Frame: do not use Dump and Desc if they do not exist
+  - bugfix: Frame: getFilter() only when a Frame is competely filled
+  - bugfix: IPv4: do not use l4 if it does not exist
+  - bugfix: IPv6: do not use l4 if it does not exist
+
 3.01 Sun Nov  5 16:27:50 CET 2006
   - NEW: ported to Windows ActivePerl
   - Utils: new subs: getGatewayIp, getGatewayMac, getIpMac

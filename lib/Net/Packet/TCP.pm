@@ -1,5 +1,5 @@
 #
-# $Id: TCP.pm,v 1.3.2.3 2006/05/25 12:17:48 gomor Exp $
+# $Id: TCP.pm,v 1.3.2.9 2006/11/12 22:54:06 gomor Exp $
 #
 package Net::Packet::TCP;
 use strict;
@@ -31,7 +31,7 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
+   shift->SUPER::new(
       src      => getRandomHighPort(),
       dst      => 0,
       seq      => getRandom32bitsInt(),
@@ -45,47 +45,33 @@ sub new {
       options  => "",
       @_,
    );
-
-   unless ($self->[$__raw]) {
-      # Autocompute header length if not user specified
-      unless ($self->[$__off]) {
-         my $hLen = NP_TCP_HDR_LEN;
-         $hLen   += length($self->[$__options]) if $self->[$__options];
-         $self->[$__off] = $hLen / 4;
-      }
-   }
-
-   $self;
 }
 
 sub recv {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($frame) = @_;
 
-   my $env = $frame->env;
+   my $env  = $frame->env;
+   my $dump = $env->dump;
 
-   for ($env->dump->framesFor($frame)) {
-      if (($_->l4->ack == $frame->l4->seq + 1 || $_->l4->haveFlagRst)
+   for ($dump->framesFor($frame)) {
+      if (($_->l4->[$__ack] == $frame->l4->[$__seq] + 1
+           || $_->l4->[$__flags] & NP_TCP_FLAG_RST)
       &&  $_->timestamp ge $frame->timestamp) {
          return $_;
       }
    }
 
-   my $l2Key = 'all';
-   $l2Key = $frame->l2->getKeyReverse($frame) if $frame->l2;
+   my $l2Key = ($frame->l2 && $frame->l2->getKeyReverse($frame))  || 'all';
+   my $l3Key = ($frame->l3 && $frame->l3->is.':'.$frame->l3->src) || 'all';
+   my $l4Key = ($frame->l4 && 'ICMP')                             || 'all';
 
-   my $l3Key = 'all';
-   $l3Key = $frame->l3->is.':'.$frame->l3->src if $frame->l3;
-
-   my $l4Key = 'all';
-   $l4Key = 'ICMP' if $frame->l4;
-
-   my $href = $env->dump->framesSorted;
+   my $href = $dump->framesSorted;
    for (@{$href->{$l2Key}{$l3Key}{$l4Key}}) {
       if (($_->timestamp ge $frame->timestamp)
       &&   $_->l4->error
-      &&  ($_->l4->error->l4->src == $self->[$__src])
-      &&  ($_->l4->error->l4->dst == $self->[$__dst])) {
+      &&  ($_->l4->error->l4->[$__src] == $self->[$__src])
+      &&  ($_->l4->error->l4->[$__dst] == $self->[$__dst])) {
          return $_;
       }
    }
@@ -157,42 +143,49 @@ sub getOptionsLength {
    $gLen > $hLen ? $gLen - $hLen : 0;
 }
 
+sub computeLengths {
+   my $self = shift;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
+
+   my $hLen = NP_TCP_HDR_LEN;
+   $hLen   += length($self->[$__options]) if $self->[$__options];
+   $self->[$__off] = $hLen / 4;
+}
+
 sub computeChecksums {
    my $self = shift;
-   my ($frame) = @_;
-
-   my $env = $frame->env;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
 
    my $offX2Flags = ($self->[$__off] << 12) | (0x0f00 & ($self->[$__x2] << 8))
                   | (0x00ff & $self->[$__flags]);
 
    my $phpkt;
    # Handle checksumming with DescL2&3
-   if ($frame->l3) {
-      if ($frame->l3->isIpv4) {
+   if ($l3) {
+      if ($l3->isIpv4) {
          $phpkt = $self->SUPER::pack('a4a4CCn',
-            inetAton($frame->l3->src),
-            inetAton($frame->l3->dst),
+            inetAton($l3->src),
+            inetAton($l3->dst),
             0,
-            $frame->l3->protocol,
-            $frame->l3->getPayloadLength,
+            $l3->protocol,
+            $l3->getPayloadLength,
          ) or return undef;
       }
-      elsif ($frame->l3->isIpv6) {
+      elsif ($l3->isIpv6) {
          $phpkt = $self->SUPER::pack('a*a*NnCC',
-            inet6Aton($frame->l3->src),
-            inet6Aton($frame->l3->dst),
-            $frame->l3->payloadLength,
+            inet6Aton($l3->src),
+            inet6Aton($l3->dst),
+            $l3->payloadLength,
             0,
             0,
-            $frame->l3->nextHeader,
+            $l3->nextHeader,
          ) or return undef;
       }
    }
    # Handle checksumming with DescL4
    else {
       my $totalLength = $self->getLength;
-      $totalLength += $frame->l7->getLength if $frame->l7;
+      $totalLength += $l7->getLength if $l7;
 
       if ($env->desc->isFamilyIpv4) {
          $phpkt = $self->SUPER::pack('a4a4CCn',
@@ -215,6 +208,9 @@ sub computeChecksums {
       }
    }
 
+   # Reset the checksum if already filled by a previous pack
+   $self->[$__checksum] = 0;
+
    $phpkt .= $self->SUPER::pack('nnNNnnnn',
       $self->[$__src],
       $self->[$__dst],
@@ -231,8 +227,8 @@ sub computeChecksums {
          or return undef;
    }
 
-   if ($frame->l7) {
-      $phpkt .= $self->SUPER::pack('a*', $frame->l7->data)
+   if ($l7 && $l7->data) {
+      $phpkt .= $self->SUPER::pack('a*', $l7->data)
          or return undef;
    }
 
@@ -241,7 +237,7 @@ sub computeChecksums {
    1;
 }
 
-sub encapsulate { shift->payload ? NP_LAYER_7 : NP_LAYER_NONE }
+sub encapsulate { shift->[$__payload] ? NP_LAYER_7 : NP_LAYER_NONE }
 
 sub getKey {
    my $self = shift;
@@ -259,25 +255,25 @@ sub print {
    my $i = $self->is;
    my $l = $self->layer;
    my $buf = sprintf
-      "$l:+$i: seq:0x%.8x  win:%d  [%d => %d]\n".
-      "$l: $i: ack:0x%.8x  flags:0x%.2x  urp:0x%.4x  checksum:0x%.4x\n".
-      "$l: $i: length:%d  optionsLength:%d",
-         $self->[$__seq],
-         $self->[$__win],
+      "$l:+$i: src:%d  dst:%d  seq:0x%04x  ack:0x%04x \n".
+      "$l: $i: off:0x%02x  x2:0x%01x  flags:0x%01x  win:%d  checksum:0x%04x  ".
+      "urp:0x%02x",
          $self->[$__src],
          $self->[$__dst],
+         $self->[$__seq],
          $self->[$__ack],
+         $self->[$__off],
+         $self->[$__x2],
          $self->[$__flags],
-         $self->[$__urp],
+         $self->[$__win],
          $self->[$__checksum],
-         $self->getLength,
-         $self->getOptionsLength,
-   ;
+         $self->[$__urp];
 
    if ($self->[$__options]) {
-      $buf .= sprintf("\n$l: $i: options:%s",
-         $self->SUPER::unpack('H*', $self->[$__options]))
-            or return undef;
+      $buf .= sprintf("\n$l: $i: optionsLength:%d  options:%s",
+         $self->getOptionsLength,
+         $self->SUPER::unpack('H*', $self->[$__options])
+      ) or return undef;
    }
 
    $buf;
@@ -307,19 +303,24 @@ Net::Packet::TCP - Transmission Control Protocol layer 4 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::TCP;
+   use Net::Packet::Consts qw(:tcp);
+   require Net::Packet::TCP;
 
-   # Build layer to inject to network
-   my $tcp = Net::Packet::TCP->new(
+   # Build a layer
+   my $layer = Net::Packet::TCP->new(
       dst     => 22,
       options => "\x02\x04\x05\xb4", # MSS=1460
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $tcp2 = Net::Packet::TCP->new(raw => $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $tcp->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::TCP->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 

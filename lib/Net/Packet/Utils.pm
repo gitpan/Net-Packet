@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.2.2.9 2006/11/05 15:28:40 gomor Exp $
+# $Id: Utils.pm,v 1.2.2.12 2006/11/12 18:43:45 gomor Exp $
 #
 package Net::Packet::Utils;
 use strict;
@@ -29,6 +29,7 @@ our @EXPORT_OK = qw(
    getGatewayIp
    getGatewayMac
    getIpMac
+   debugDeviceList
 );
 
 our %EXPORT_TAGS = (
@@ -265,6 +266,42 @@ sub _arpLookup {
    '00:00:00:00:00:00';
 }
 
+# Thanx to Maddingue
+sub _toDotQuad {
+   my ($i) = @_;
+   ($i >> 24 & 255).'.'.($i >> 16 & 255).'.'.($i >> 8 & 255).'.'.($i & 255);
+}
+
+sub debugDeviceList {
+   use Data::Dumper;
+   require Net::Pcap;
+
+   my %dev;
+   my $err;
+   Net::Pcap::findalldevs(\%dev, \$err);
+   print STDERR "findalldevs: error: $err\n" if $err;
+
+   # Net::Pcap stuff
+   for my $d (keys %dev) {
+      my ($net, $mask);
+      if (Net::Pcap::lookupnet($d, \$net, \$mask, \$err) < 0) {
+         print STDERR "lookupnet: error: $d: $err\n";
+         $err = undef; next;
+      }
+      print STDERR "[$d] => subnet: "._toDotQuad($net)."\n";
+   }
+
+   # Net::Libdnet stuff
+   for my $i (0..5) {
+      my $eth = 'eth'.$i;
+      my $dnet = Net::Libdnet::intf_get($eth);
+      last unless keys %$dnet > 0;
+      $dnet->{subnet} = Net::Libdnet::addr_net($dnet->{addr})
+         if $dnet->{addr};
+      print STDERR Dumper($dnet)."\n";
+   }
+}
+
 1;
 
 =head1 NAME
@@ -366,6 +403,10 @@ Returns the gateway MAC address of specified gateway IP address. It first looks 
 =item B<getIpMac> (scalar)
 
 Returns the MAC address of specified IP address. It first looks up from ARP cache table. If nothing is found, it checks to see if the specified IP address is on the same subnet. If not, it returns the gateway MAC address, otherwise does an ARP lookup. Then, the ARP cache table is updated if an ARP resolution has been necessary.
+
+=item B<debugDeviceList>
+
+If you have problem under Windows concerning network interfaces, please send me the output of this method.
 
 =back
 

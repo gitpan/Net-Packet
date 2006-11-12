@@ -1,5 +1,5 @@
 #
-# $Id: NULL.pm,v 1.2.2.1 2006/05/01 17:21:19 gomor Exp $
+# $Id: NULL.pm,v 1.2.2.4 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::NULL;
 use strict;
@@ -19,12 +19,10 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
+   shift->SUPER::new(
       type => NP_NULL_TYPE_IPv4,
       @_,
    );
-
-   $self;
 }
 
 sub getLength { NP_NULL_HDR_LEN }
@@ -84,18 +82,24 @@ Net::Packet::NULL - BSD loopback layer 2 object
 
 =head1 SYNOPSIS
 
+   #
    # Usually, you do not use this module directly
+   #
+   use Net::Packet::Consts qw(:null);
+   require Net::Packet::NULL;
 
-   use Net::Packet::NULL;
+   # Build a layer
+   my $layer = Net::Packet::NULL->new;
+   $layer->pack;
 
-   # Build layer to inject to network
-   my $null1 = Net::Packet::NULL->new;
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $null2 = Net::Packet::NULL->new(raw => $rawFromNetwork);
+   # Read a raw layer
+   my $layer = Net::Packet::NULL->new(raw => $raw);
 
-   print $null1->print, "\n";
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
@@ -109,7 +113,7 @@ See also B<Net::Packet::Layer> and B<Net::Packet::Layer2> for other attributes a
 
 =item B<type>
 
-Stores the type of encapsulated upper layer.
+Stores the type of encapsulated layer.
 
 =back
 
@@ -137,7 +141,7 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 
 =item B<isTypeIp> - is type IPv4 or IPv6
 
-Helper methods. Return true is the encapsulated upper layer is of specified type, false otherwise.
+Helper methods. Return true is the encapsulated layer is of specified type, false otherwise.
 
 =back
 

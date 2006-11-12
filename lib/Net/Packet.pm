@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.2.2.9 2006/11/04 12:17:11 gomor Exp $
+# $Id: Packet.pm,v 1.2.2.13 2006/11/12 19:15:04 gomor Exp $
 #
 package Net::Packet;
 use strict;
@@ -7,7 +7,7 @@ use warnings;
 
 require v5.6.1;
 
-our $VERSION = '3.01';
+our $VERSION = '3.20';
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -15,7 +15,7 @@ our @ISA = qw(Exporter);
 use Net::Packet::Env    qw($Env);
 use Net::Packet::Utils  qw(:all);
 use Net::Packet::Consts qw(:desc :dump :layer :eth :arp :vlan :null :ipv4
-   :ipv6 :tcp :udp :icmpv4);
+   :ipv6 :tcp :udp :icmpv4 :cdp :llc :ppplcp :pppoe :ppp);
 
 require Net::Packet::Dump;
 
@@ -35,6 +35,12 @@ require Net::Packet::ICMPv4;
 require Net::Packet::NULL;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
+require Net::Packet::CDP;
+require Net::Packet::CDP::TypeDeviceId;
+require Net::Packet::LLC;
+require Net::Packet::PPPLCP;
+require Net::Packet::PPPoE;
+require Net::Packet::PPP;
 
 our @EXPORT = (
    @Net::Packet::Env::EXPORT_OK,
@@ -174,6 +180,12 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      +---Net::Packet::IPv6
      |      |
      |      +---Net::Packet::VLAN
+     |      |
+     |      +---Net::Packet::PPPoE
+     |      |
+     |      +---Net::Packet::PPP
+     |      |
+     |      +---Net::Packet::LLC
      |
      +---Net::Packet::Layer4
      |      |
@@ -182,6 +194,10 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      +---Net::Packet::UDP
      |      |
      |      +---Net::Packet::ICMPv4
+     |      |
+     |      +---Net::Packet::PPPLCP
+     |      |
+     |      +---Net::Packet::CDP
      |
      +---Net::Packet::Layer7
 
@@ -189,9 +205,9 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
 
 This module is a unified framework to craft, send and receive packets at layers 2, 3, 4 and 7.
 
-Basically, you forge each layer of a frame (B<Net::Packet::IPv4> for layer 3, B<Net::Packet::TCP> for layer 4; for example), and pack all of this into a B<Net::Packet::Frame> object. Then, you can send the frame to the network, and receive its response easily, because the response is automatically searched for and matched against the request.
+Basically, you forge each layer of a frame (B<Net::Packet::IPv4> for layer 3, B<Net::Packet::TCP> for layer 4; for example), and pack all of this into a B<Net::Packet::Frame> object. Then, you can send the frame to the network, and receive its response easily, because the response is automatically searched for and matched against the request (not implemented for all layers).
 
-If you want some layer 2, 3 or 4 protocol encoding/decoding to be added, just ask, and give a corresponding .pcap file ;). You can also subscribe to netpacket-sers@gomor.org by sumply sending an e-mail requesting for it.
+If you want some layer 2, 3 or 4 protocol encoding/decoding to be added, just ask, and give a corresponding .pcap file ;). You can also subscribe to netpacket-users@gomor.org by sumply sending an e-mail requesting for it.
 
 You should study various pod found in all classes, example files found in B<examples> directory that come with this tarball, and also tests in B<t> directory.
 

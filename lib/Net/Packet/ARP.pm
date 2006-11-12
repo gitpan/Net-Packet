@@ -1,5 +1,5 @@
 #
-# $Id: ARP.pm,v 1.3.2.6 2006/11/04 13:37:23 gomor Exp $
+# $Id: ARP.pm,v 1.3.2.8 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::ARP;
 use strict;
@@ -15,8 +15,8 @@ our @AS = qw(
    pSize
    opCode
    src
-   dst
    srcIp
+   dst
    dstIp
 );
 __PACKAGE__->cgBuildIndices;
@@ -122,15 +122,13 @@ sub print {
    my $l = $self->layer;
    my $i = $self->is;
    sprintf
-      "$l:+$i: hType:0x%.4x  hSize:0x%.2x  pType:0x%.4x  pSize:0x%.2x\n".
-      "$l: $i: src:%s => dst:%s\n".
-      "$l: $i: srcIp:%s => dstIp:%s\n".
-      "$l: $i: opCode:0x%.4x",
-         $self->hType,  $self->hSize, $self->pType, $self->pSize,
-         $self->src,    $self->dst,
-         $self->srcIp,  $self->dstIp,
-         $self->opCode,
-   ;
+      "$l:+$i: hType:0x%04x  pType:0x%04x  hSize:0x%02x  pSize:0x%02x".
+      "  opCode:0x%04x\n".
+      "$l: $i: src:%s  srcIp:%s\n".
+      "$l: $i: dst:%s  dstIp:%s".
+         $self->[$__hType], $self->[$__pType], $self->[$__hSize],
+         $self->[$__pSize], $self->[$__opCode], $self->[$__src],
+         $self->[$__srcIp], $self->[$__dst],  $self->[$__dstIp];
 }
 
 #
@@ -151,18 +149,23 @@ Net::Packet::ARP - Address Resolution Protocol layer 3 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::ARP;
+   use Net::Packet::Consts qw(:arp);
+   require Net::Packet::ARP;
 
-   # Build layer to inject to network
-   my $arpRequest = Net::Packet::ARP->new(
+   # Build a layer
+   my $layer = Net::Packet::ARP->new(
       dstIp => "192.168.0.1",
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $arp = Net::Packet::ARP->new(raw => $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $arpRequest->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::ARP->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 

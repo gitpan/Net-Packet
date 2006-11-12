@@ -1,5 +1,5 @@
 #
-# $Id: SLL.pm,v 1.2.2.1 2006/05/01 17:26:06 gomor Exp $
+# $Id: SLL.pm,v 1.2.2.5 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::SLL;
 use strict;
@@ -23,7 +23,7 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
+   shift->SUPER::new(
       packetType    => NP_SLL_PACKET_TYPE_SENT_BY_US,
       addressType   => NP_SLL_ADDRESS_TYPE_512,
       addressLength => 0,
@@ -31,8 +31,6 @@ sub new {
       protocol      => NP_SLL_PROTOCOL_IPv4,
       @_,
    );
-
-   $self;
 }
 
 sub getLength { NP_SLL_HDR_LEN }
@@ -72,6 +70,8 @@ sub encapsulate {
    my $types = {
       NP_SLL_PROTOCOL_IPv4() => NP_LAYER_IPv4(),
       NP_SLL_PROTOCOL_IPv6() => NP_LAYER_IPv6(),
+      NP_SLL_PROTOCOL_ARP()  => NP_LAYER_ARP(),
+      NP_SLL_PROTOCOL_VLAN() => NP_LAYER_VLAN(),
    };
 
    $types->{shift->[$__protocol]} || NP_LAYER_UNKNOWN();
@@ -82,13 +82,11 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: packetType:0x%04x addressLength:0x%04x protocol:0x%04x\n".
-           "$l: $i: source: %d",
-      $self->packetType,
-      $self->addressLength,
-      $self->protocol,
-      $self->source,
-   ;
+   sprintf "$l:+$i: packetType:0x%04x  addressType:0x%04x  ".
+           "addressLength:0x%04x\n".
+           "$l: $i: source:%d  protocol:0x%04x",
+      $self->[$__packetType], $self->[$__addressType],
+      $self->[$__addressLength], $self->[$__source], $self->[$__protocol];
 }
 
 #
@@ -112,18 +110,24 @@ Net::Packet::SLL - Linux cooked capture layer 2 object
 
 =head1 SYNOPSIS
 
+   #
    # Usually, you do not use this module directly
+   #
+   use Net::Packet::Consts qw(:sll);
+   require Net::Packet::SLL;
 
-   use Net::Packet::SLL;
+   # Build a layer
+   my $layer = Net::Packet::SLL->new;
+   $layer->pack;
 
-   # Build layer to inject to network
-   my $sll1 = Net::Packet::SLL->new;
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $sll2 = Net::Packet::SLL->new(raw => $rawFromNetwork);
+   # Read a raw layer
+   my $layer = Net::Packet::SLL->new(raw => $raw);
 
-   print $sll1->print, "\n";
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
@@ -189,7 +193,7 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 
 =item B<isProtocolIp> - is type IPv4 or IPv6
 
-Helper methods. Return true is the encapsulated upper layer is of specified type, false otherwise.
+Helper methods. Return true is the encapsulated layer is of specified type, false otherwise.
 
 =back
 
@@ -208,6 +212,10 @@ Various possible packet types.
 =item B<NP_SLL_PROTOCOL_IPv4>
 
 =item B<NP_SLL_PROTOCOL_IPv6>
+
+=item B<NP_SLL_PROTOCOL_ARP>
+
+=item B<NP_SLL_PROTOCOL_VLAN>
 
 Various supported encapsulated layer types.
 

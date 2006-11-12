@@ -1,5 +1,5 @@
 #
-# $Id: ETH.pm,v 1.3.2.4 2006/06/04 13:22:08 gomor Exp $
+# $Id: ETH.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::ETH;
 use strict;
@@ -17,8 +17,8 @@ use Net::Packet::Utils qw(convertMac);
 use Net::Packet::Consts qw(:eth :layer);
 
 our @AS = qw(
-   src
    dst
+   src
    type
 );
 __PACKAGE__->cgBuildIndices;
@@ -71,14 +71,27 @@ sub unpack {
 }
 
 sub encapsulate {
+   my $self = shift;
+
    my $types = {
-      NP_ETH_TYPE_IPv4() => NP_LAYER_IPv4(),
-      NP_ETH_TYPE_IPv6() => NP_LAYER_IPv6(),
-      NP_ETH_TYPE_ARP()  => NP_LAYER_ARP(),
-      NP_ETH_TYPE_VLAN() => NP_LAYER_VLAN(),
+      NP_ETH_TYPE_IPv4()  => NP_LAYER_IPv4(),
+      NP_ETH_TYPE_IPv6()  => NP_LAYER_IPv6(),
+      NP_ETH_TYPE_ARP()   => NP_LAYER_ARP(),
+      NP_ETH_TYPE_VLAN()  => NP_LAYER_VLAN(),
+      NP_ETH_TYPE_PPPoE() => NP_LAYER_PPPoE(),
    };
 
-   $types->{shift->type} || NP_LAYER_UNKNOWN();
+   # Is this a 802.3 layer ?
+   if ($self->[$__type] <= 1500 && $self->[$__payload]) {
+      my $payload = CORE::unpack('H*', $self->[$__payload]);
+      if ($payload =~ /^aaaa/) {
+         return NP_LAYER_LLC();
+      }
+      return NP_LAYER_UNKNOWN();
+   }
+   else {
+      $types->{$self->type} || NP_LAYER_UNKNOWN();
+   }
 }
 
 sub print {
@@ -86,20 +99,21 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: type:0x%04x  [%s => %s]",
-      $self->type, $self->src, $self->dst;
+   sprintf "$l:+$i: dst:%s  src:%s  type:0x%04x",
+      $self->[$__dst], $self->[$__src], $self->[$__type];
 }
 
 #
 # Helpers
 #
 
-sub _isType    { shift->type == shift()                           }
-sub isTypeArp  { shift->_isType(NP_ETH_TYPE_ARP)                  }
-sub isTypeIpv4 { shift->_isType(NP_ETH_TYPE_IPv4)                 }
-sub isTypeIpv6 { shift->_isType(NP_ETH_TYPE_IPv6)                 }
-sub isTypeVlan { shift->_isType(NP_ETH_TYPE_VLAN)                 }
-sub isTypeIp   { my $self = shift; $self->isIpv4 || $self->isIpv6 }
+sub _isType     { shift->type == shift()                                   }
+sub isTypeArp   { shift->_isType(NP_ETH_TYPE_ARP)                          }
+sub isTypeIpv4  { shift->_isType(NP_ETH_TYPE_IPv4)                         }
+sub isTypeIpv6  { shift->_isType(NP_ETH_TYPE_IPv6)                         }
+sub isTypeVlan  { shift->_isType(NP_ETH_TYPE_VLAN)                         }
+sub isTypePppoe { shift->_isType(NP_ETH_TYPE_PPPoE)                        }
+sub isTypeIp    { my $self = shift; $self->isTypeIpv4 || $self->isTypeIpv6 }
 
 1;
 
@@ -111,21 +125,24 @@ Net::Packet::ETH - Ethernet/802.3 layer 2 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::ETH;
-
    use Net::Packet::Consts qw(:eth);
+   require Net::Packet::ETH;
 
-   # Build layer to inject to network
-   my $eth1 = Net::Packet::ETH->new(
+   # Build a layer
+   my $layer = Net::Packet::ETH->new(
       type => NP_ETH_TYPE_IPv6,
       dst  => "00:11:22:33:44:55",
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $eth2 = Net::Packet::ETH->new(raw => $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $eth1->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::ETH->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
@@ -188,7 +205,9 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 
 =item B<isTypeVlan>
 
-Helper methods. Return true is the encapsulated upper layer is of specified type, false otherwise. 
+=item B<isTypePppoe>
+
+Helper methods. Return true is the encapsulated layer is of specified type, false otherwise. 
 
 =back
 
@@ -211,6 +230,10 @@ Ethernet broadcast address.
 =item B<NP_ETH_TYPE_IPv6>
 
 =item B<NP_ETH_TYPE_ARP>
+
+=item B<NP_ETH_TYPE_VLAN>
+
+=item B<NP_ETH_TYPE_PPPoE>
 
 Various supported Ethernet types.
 

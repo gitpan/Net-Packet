@@ -1,5 +1,5 @@
 #
-# $Id: RAW.pm,v 1.2.2.1 2006/05/01 17:23:33 gomor Exp $
+# $Id: RAW.pm,v 1.2.2.3 2006/11/12 19:11:24 gomor Exp $
 #
 package Net::Packet::RAW;
 use strict;
@@ -17,13 +17,31 @@ sub pack { shift->[$__raw] = '' }
 
 sub unpack {
    my $self = shift;
-   my $payload = $self->SUPER::unpack('a*', $self->[$__raw])
-      or return undef;
-   $self->[$__payload] = $payload;
+   $self->[$__payload] = $self->[$__raw];
    1;
 }
 
-sub encapsulate { NP_LAYER_UNKNOWN }
+sub encapsulate {
+   my $self = shift;
+
+   return NP_LAYER_NONE() if ! $self->[$__payload];
+
+   # With RAW layer, we must guess which type is the first layer
+   my $payload = CORE::unpack('H*', $self->[$__payload]);
+
+   # XXX: may not work on big-endian arch
+   if ($payload =~ /^4/) {
+      return NP_LAYER_IPv4();
+   }
+   elsif ($payload =~ /^6/) {
+      return NP_LAYER_IPv6();
+   }
+   elsif ($payload =~ /^0001....06/) {
+      return NP_LAYER_ARP();
+   }
+
+   return NP_LAYER_UNKNOWN();
+}
 
 1;
 
@@ -35,23 +53,29 @@ Net::Packet::RAW - empty layer 2 object
 
 =head1 SYNOPSIS
   
+   #
    # Usually, you do not use this module directly
+   #
+   # No constants for RAW
+   require Net::Packet::RAW;
 
-   use Net::Packet::RAW;
+   # Build a layer
+   my $layer = Net::Packet::RAW->new;
+   $layer->pack;
 
-   # Build layer to inject to network
-   my $raw1 = Net::Packet::RAW->new;
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $raw2 = Net::Packet::RAW->new(raw => $rawFromNetwork);
+   # Read a raw layer
+   my $layer = Net::Packet::RAW->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
 This modules implements the encoding and decoding of the raw layer 2.
  
-Because of the nature of this layer, it is not possible to know by asking it what the upper layer type is. We must do a special hack to detect it (done in B<Net::Packet::Frame>).
-
 See also B<Net::Packet::Layer> and B<Net::Packet::Layer2> for other attributes and methods.
 
 =head1 METHODS
@@ -60,7 +84,7 @@ See also B<Net::Packet::Layer> and B<Net::Packet::Layer2> for other attributes a
 
 =item B<new>
 
-Object constructor. No default values, since no attributes.
+Object constructor. No default values, because no attributes.
 
 =item B<pack>
 

@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.3.2.4 2006/06/04 13:36:56 gomor Exp $
+# $Id: IPv4.pm,v 1.3.2.10 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::IPv4;
 use strict;
@@ -28,7 +28,6 @@ our @AS = qw(
    hlen
    options
    noFixLen
-   doChecksum
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);      
@@ -37,24 +36,18 @@ no strict 'vars';
 
 BEGIN {
    my $osname = {
-      freebsd => [ \&_fixLenBsd, undef, ],
-      netbsd  => [ \&_fixLenBsd, undef, ],
-      cygwin  => [ undef, \&_newWin32,  ],
-      MSWin32 => [ undef, \&_newWin32,  ],
+      freebsd => [ \&_fixLenBsd, ],
+      netbsd  => [ \&_fixLenBsd, ],
    };
 
    *_fixLen = $osname->{$^O}->[0] || \&_fixLenOther;
-   *new     = $osname->{$^O}->[1] || \&_newOther;
 }
 
 sub _fixLenBsd   { pack('v', shift) }
 sub _fixLenOther { pack('n', shift) }
 
-sub _newWin32 { shift->_newCommon(doChecksum => 1, @_) }
-sub _newOther { shift->_newCommon(@_)                  }
-
-sub _newCommon {
-   my $self = shift->SUPER::new(
+sub new {
+   shift->SUPER::new(
       version  => 4,
       tos      => 0,
       id       => getRandom16bitsInt(),
@@ -69,20 +62,8 @@ sub _newCommon {
       dst      => '127.0.0.1',
       options  => '',
       noFixLen   => 0,
-      doChecksum => 0,
       @_,
    );
-
-   unless ($self->[$__raw]) {
-      # Autocompute header length if not user specified
-      unless ($self->[$__hlen]) {
-         my $hLen = NP_IPv4_HDR_LEN;
-         $hLen   += length($self->[$__options]) if $self->[$__options];
-         $self->[$__hlen] = $hLen / 4;
-      }
-   }
-
-   $self;
 }
 
 sub pack {
@@ -169,30 +150,36 @@ sub getOptionsLength {
 
 sub _computeTotalLength {
    my $self  = shift;
-   my $frame = shift;
-
-   # Do not compute if user specified
-   return if $self->[$__length];
+   my ($l4, $l7) = @_;
 
    my $total = $self->getLength;
-   $total += $frame->l4->getLength;
-   $total += $frame->l7->getLength if $frame->l7;
+   $total += $l4->getLength if $l4;
+   $total += $l7->getLength if $l7;
    $self->[$__length] = $total;
 }
 
 sub computeLengths {
-   my $self  = shift;
-   my $frame = shift;
+   my $self = shift;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
 
-   $frame->l4->computeLengths($frame) or return undef;
-   $self->_computeTotalLength($frame);
+   my $hLen = NP_IPv4_HDR_LEN;
+   $hLen   += length($self->[$__options]) if $self->[$__options];
+   $self->[$__hlen] = $hLen / 4;
+
+   $l4 && ($l4->computeLengths($env, $l2, $l3, $l4, $l7) or return undef);
+
+   $self->_computeTotalLength($l4, $l7);
+
    1;
 }
 
 sub computeChecksums {
-   my $self  = shift;
+   my $self = shift;
 
-   return 1 unless $self->[$__doChecksum];
+   # Reset the checksum if already filled by a previous pack
+   $self->[$__checksum] = 0;
+
+   return 1 if ! $Env->doIPv4Checksum;
 
    $self->pack;
    $self->[$__checksum] = inetChecksum($self->[$__raw]);
@@ -205,6 +192,7 @@ sub encapsulate {
       NP_IPv4_PROTOCOL_TCP()    => NP_LAYER_TCP(),
       NP_IPv4_PROTOCOL_UDP()    => NP_LAYER_UDP(),
       NP_IPv4_PROTOCOL_ICMPv4() => NP_LAYER_ICMPv4(),
+      NP_IPv4_PROTOCOL_IPv6()   => NP_LAYER_IPv6(),
    };
 
    $types->{shift->protocol} || NP_LAYER_UNKNOWN();
@@ -223,28 +211,34 @@ sub getKeyReverse {
 sub print {
    my $self = shift;
 
+   my $buf = '';
+
    my $i = $self->is;
    my $l = $self->layer;
-   sprintf
-      "$l:+$i: version:%d  id:%.4d  ttl:%d  [%s => %s]\n".
-      "$l: $i: tos:0x%.2x  flags:0x%.2x  offset:%d\n".
-      "$l: $i: checksum:0x%.4x  protocol:0x%.2x\n".
-      "$l: $i: size:%d  length:%d  optionsLength:%d  payload:%d",
+   $buf .= sprintf
+      "$l:+$i: version:%d  hlen:%d  tos:0x%02x  length:%d  id:%d\n".
+      "$l: $i: flags:0x%02x  offset:%d  ttl:%d  protocol:0x%02x  checksum:0x%04x\n".
+      "$l: $i: src:%s  dst:%s",
          $self->[$__version],
-         $self->[$__id],
-         $self->[$__ttl],
-         $self->[$__src],
-         $self->[$__dst],
+         $self->[$__hlen],
          $self->[$__tos],
+         $self->[$__length],
+         $self->[$__id],
          $self->[$__flags],
          $self->[$__offset],
-         $self->[$__checksum],
+         $self->[$__ttl],
          $self->[$__protocol],
-         $self->[$__length],
-         $self->getLength,
+         $self->[$__checksum],
+         $self->[$__src],
+         $self->[$__dst];
+
+   if ($self->[$__options]) {
+      $buf .= sprintf "$l: $i: optionsLength:%d  options:%s",
          $self->getOptionsLength,
-         $self->getPayloadLength,
-   ;
+         $self->[$__options];
+   }
+
+   $buf;
 }
 
 #
@@ -271,20 +265,24 @@ Net::Packet::IPv4 - Internet Protocol v4 layer 3 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::IPv4;
    use Net::Packet::Consts qw(:ipv4);
+   require Net::Packet::IPv4;
 
-   # Build layer to inject to network
+   # Build a layer
    my $ip = Net::Packet::IPv4->new(
       flags => NP_IPv4_DONT_FRAGMENT,
       dst   => "192.168.0.1",
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $ip2 = Net::Packet::IPv4->new(raw => $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $ip->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::IPv4->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
@@ -352,10 +350,6 @@ IP options, as a hexadecimal string.
 
 Since the byte ordering of B<length> attribute varies from system to system, a subroutine inside this module detects which byte order to use. Sometimes, like when you build B<Net::Packet::VLAN> layers, you may have the need to avoid this. So set it to 1 in order to avoid fixing. Default is 0 (that is to fix).
 
-=item B<doChecksum>
-
-Usually the IP checksum is done by the system. But if you inject some frames into network somewhere (well, err...), this checksum could be not computed. So, you can enable it by setting this attribute to 1. Default 0, to let the system compute it.
-
 =back
 
 =head1 METHODS
@@ -393,8 +387,6 @@ dst:      "127.0.0.1"
 options:  ""
 
 noFixLen:   0
-
-doChecksum: 0
 
 =item B<pack>
 
@@ -446,6 +438,8 @@ Load them: use Net::Packet::Consts qw(:ipv4);
 =item B<NP_IPv4_PROTOCOL_UDP>
 
 =item B<NP_IPv4_PROTOCOL_ICMPv4>
+
+=item B<NP_IPv4_PROTOCOL_IPv6>
 
 Various protocol type constants.
 

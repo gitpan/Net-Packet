@@ -1,5 +1,5 @@
 #
-# $Id: ICMPv4.pm,v 1.3.2.4 2006/06/04 13:36:37 gomor Exp $
+# $Id: ICMPv4.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::ICMPv4;
 use strict;
@@ -9,6 +9,7 @@ use Carp;
 require Net::Packet::Layer4;
 our @ISA = qw(Net::Packet::Layer4);
 
+use Net::Packet::Env qw($Env);
 use Net::Packet::Utils qw(getRandom16bitsInt getRandom32bitsInt inetChecksum
    inetAton inetNtoa);
 use Net::Packet::Consts qw(:icmpv4 :layer);
@@ -36,7 +37,7 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
+   shift->SUPER::new(
       type               => NP_ICMPv4_TYPE_ECHO_REQUEST,
       code               => NP_ICMPv4_CODE_ZERO,
       checksum           => 0,
@@ -46,19 +47,11 @@ sub new {
       receiveTimestamp   => 0,
       transmitTimestamp  => 0,
       addressMask        => 0,
-      gateway            => "127.0.0.1",
+      gateway            => '127.0.0.1',
       unused             => 0,
-      data               => "",
+      data               => '',
       @_,
    );
-
-   unless ($self->[$__raw]) {
-      # This line handles the packing of ICMPv4 Destination unreach IPv4 Frame
-      my $error = $self->[$__error];
-      $self->[$__data] = $error->raw if $error;
-   }
-
-   $self;
 }
 
 sub getKey        { 'ICMP' }
@@ -243,10 +236,21 @@ sub _unpackAddressMask {
 # Pad ICMP error returned to achieve IP length (from IP request),
 # and put it as a Frame into error instance data
 sub _dataToFrame {
-   my $data  = shift;
-   my $ip = Net::Packet::IPv4->new(raw => $data);
-   $data .= "\x00" x $ip->length;
-   Net::Packet::Frame->new(raw => $data) or return undef;
+   my $self = shift;
+   my ($data) = @_;
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      my $ip = Net::Packet::IPv4->new(raw => $data);
+      $data .= "\x00" x $ip->length;
+      my $f = Net::Packet::Frame->new(
+         raw => $data, encapsulate => NP_LAYER_IPv4
+      ) or return undef;
+      return $f;
+   }
+   else {
+      $self->[$__payload] = $data;
+   }
+   undef;
 }
 
 sub _packDestUnreach {
@@ -259,12 +263,13 @@ sub _packDestUnreach {
 }
 
 sub _unpackDestUnreach {
-   my $href = shift->_handleType(
+   my $self = shift;
+   my $href = $self->_handleType(
       'N a*',
       [ qw(unused data) ],
       [],
    );
-   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   $href->{error} = $self->_dataToFrame($href->{data}) if $href->{data};
    $href;
 }
 
@@ -278,13 +283,14 @@ sub _packRedirect {
 }
 
 sub _unpackRedirect {
-   my $href = shift->_handleType(
+   my $self = shift;
+   my $href = $self->_handleType(
       'a4 a*',
       [ qw(gateway data) ],
       [],
    );
    $href->{gateway} = inetNtoa($href->{gateway});
-   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   $href->{error} = $self->_dataToFrame($href->{data}) if $href->{data};
    $href;
 }
 
@@ -298,12 +304,13 @@ sub _packTimeExceed {
 }
 
 sub _unpackTimeExceed {
-   my $href = shift->_handleType(
+   my $self = shift;
+   my $href = $self->_handleType(
       'N a*',
       [ qw(unused data) ],
       [],
    );
-   $href->{error} = _dataToFrame($href->{data}) if $href->{data};
+   $href->{error} = $self->_dataToFrame($href->{data}) if $href->{data};
    $href;
 }
 
@@ -317,6 +324,12 @@ sub _decodeError {
 sub pack {
    my $self = shift;
 
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      my $error = $self->[$__error];
+      $self->[$__data] = $error->raw if $error;
+   }
+
    $self->[$__raw] = $self->SUPER::pack('CCn',
       $self->[$__type],
       $self->[$__code],
@@ -326,8 +339,8 @@ sub pack {
    my $sub = $packTypes->{$self->[$__type]} || \&_decodeError;
    my $raw = $self->$sub or return undef;
 
-   if (my $data = $self->[$__data]) {
-      $raw .= $self->SUPER::pack('a*', $data)
+   if ($self->[$__data]) {
+      $raw .= $self->SUPER::pack('a*', $self->[$__data])
          or return undef;
    }
 
@@ -354,8 +367,11 @@ sub unpack {
 
    $self->$_($href->{$_}) for keys %$href;
 
-   # payload has been handled by previous chunk of code
-   $self->[$__payload] = undef;
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      # payload has been handled by previous chunk of code
+      $self->[$__payload] = undef;
+   }
 
    1;
 }
@@ -379,7 +395,28 @@ sub computeChecksums {
    1;
 }
 
-sub encapsulate { NP_LAYER_NONE }
+sub encapsulate {
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      return NP_LAYER_NONE;
+   }
+
+   my $types = {
+      NP_ICMPv4_TYPE_ECHO_REQUEST()            => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_ECHO_REPLY()              => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_TIMESTAMP_REQUEST()       => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_TIMESTAMP_REPLY()         => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_INFORMATION_REQUEST()     => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_INFORMATION_REPLY()       => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_ADDRESS_MASK_REQUEST()    => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_ADDRESS_MASK_REPLY()      => NP_LAYER_NONE(),
+      NP_ICMPv4_TYPE_DESTINATION_UNREACHABLE() => NP_LAYER_IPv4(),
+      NP_ICMPv4_TYPE_REDIRECT()                => NP_LAYER_IPv4(),
+      NP_ICMPv4_TYPE_TIME_EXCEEDED()           => NP_LAYER_IPv4(),
+   };
+
+   $types->{shift->type} || NP_LAYER_UNKNOWN();
+}
 
 sub print {
    my $self = shift;
@@ -387,12 +424,9 @@ sub print {
    my $i = $self->is;
    my $l = $self->layer;
    my $buf = sprintf
-      "$l:+$i: type:%d  code:%d  checksum:0x%.4x  size:%d",
-         $self->type,
-         $self->code,
-         $self->checksum,
-         $self->getLength,
-   ;
+      "$l:+$i: type:%d  code:%d  checksum:0x%04x  headerLength:%d",
+         $self->[$__type], $self->[$__code], $self->[$__checksum],
+         $self->getLength;
 
    if ($self->data) {
       $buf .= sprintf("\n$l: $i: dataLength:%d  data:%s",
@@ -443,8 +477,8 @@ Net::Packet::ICMPv4 - Internet Control Message Protocol v4 layer 4 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::ICMPv4;
    use Net::Packet::Consts qw(:icmpv4);
+   require Net::Packet::ICMPv4;
 
    # Build echo-request header
    my $echo = Net::Packet::ICMPv4->new(data => '0123456789');
@@ -466,13 +500,16 @@ Net::Packet::ICMPv4 - Internet Control Message Protocol v4 layer 4 object
       type => NP_ICMPv4_TYPE_TIMESTAMP_REQUEST,
       data => '0123456789',
    );
+   $timestamp->pack;
 
+   print 'RAW: '.unpack('H*', $timestamp->raw)."\n";
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $decode = Net::Packet::ICMPv4->new(raw => $rawFromNetwork);
+   # Read a raw layer
+   my $layer = Net::Packet::ICMPv4->new(raw => $raw);
 
-   print $echo->print, "\n";
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,5 @@
 #
-# $Id: UDP.pm,v 1.3.2.1 2006/05/01 17:36:05 gomor Exp $
+# $Id: UDP.pm,v 1.3.2.5 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::UDP;
 use strict;
@@ -99,55 +99,53 @@ sub getPayloadLength {
 
 sub _computeTotalLength {
    my $self = shift;
-   my ($frame) = @_;
+   my ($l7) = @_;
 
    # Autocompute header length if not user specified
    return if $self->[$__length];
 
    my $totalLength = $self->getLength;
-   $totalLength += $frame->l7->getLength if $frame->l7;
+   $totalLength += $l7->getLength if $l7;
    $self->[$__length] = $totalLength;
 }
 
 sub computeLengths {
    my $self = shift;
-   my ($frame) = @_;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
 
-   $self->_computeTotalLength($frame);
+   $self->_computeTotalLength($l7);
    1;
 }
 
 sub computeChecksums {
    my $self = shift;
-   my ($frame) = @_;
-
-   my $env = $frame->env;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
 
    my $phpkt;
-   if ($frame->l3) {
-      if ($frame->isIpv4) {
+   if ($l3) {
+      if ($l3->isIpv4) {
          $phpkt = $self->SUPER::pack('a4a4CCn',
-            inetAton($frame->l3->src),
-            inetAton($frame->l3->dst),
+            inetAton($l3->src),
+            inetAton($l3->dst),
             0,
-            $frame->l3->protocol,
+            $l3->protocol,
             $self->[$__length],
          ) or return undef;
       }
-      elsif ($frame->isIpv6) {
+      elsif ($l3->isIpv6) {
          $phpkt = $self->SUPER::pack('a*a*NnCC',
-            inet6Aton($frame->l3->src),
-            inet6Aton($frame->l3->dst),
-            $frame->l3->payloadLength,
+            inet6Aton($l3->src),
+            inet6Aton($l3->dst),
+            $l3->payloadLength,
             0,
             0,
-            $frame->l3->nextHeader,
+            $l3->nextHeader,
          ) or return undef;
       }
    }
    else {
       my $totalLength = $self->getLength;
-      $totalLength += $frame->l7->getLength if $frame->l7;
+      $totalLength += $l7->getLength if $l7;
 
       if ($env->desc->isFamilyIpv4) {
          $phpkt = $self->SUPER::pack('a4a4CCn',
@@ -170,6 +168,9 @@ sub computeChecksums {
       }
    }
 
+   # Reset the checksum if already filled by a previous pack
+   $self->[$__checksum] = 0;
+
    $phpkt .= $self->SUPER::pack('nnnn',
       $self->[$__src],
       $self->[$__dst],
@@ -177,8 +178,8 @@ sub computeChecksums {
       $self->[$__checksum],
    ) or return undef;
 
-   if ($frame->l7) {
-      $phpkt .= $self->SUPER::pack('a*', $frame->l7->data)
+   if ($l7 && $l7->data) {
+      $phpkt .= $self->SUPER::pack('a*', $l7->data)
          or return undef;
    }
 
@@ -205,15 +206,9 @@ sub print {
    my $i = $self->is;
    my $l = $self->layer;
    sprintf
-      "$l:+$i: checksum:0x%.4x  [%d => %d]\n".
-      "$l: $i: size:%d  header:%d  payload:%d",
-         $self->checksum,
-         $self->src,
-         $self->dst,
-         $self->length,
-         $self->getLength,
-         $self->getPayloadLength,
-   ;
+      "$l:+$i: src:%d  dst:%d  length:%d  checksum:0x%02x",
+         $self->[$__src], $self->[$__dst], $self->[$__length],
+         $self->[$__checksum];
 }
 
 1;
@@ -226,18 +221,23 @@ Net::Packet::UDP - User Datagram Protocol layer 4 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::UDP;
+   use Net::Packet::Consts qw(:udp);
+   require Net::Packet::UDP;
 
-   # Build layer to inject to network
-   my $udp = Net::Packet::UDP->new(
+   # Build a layer
+   my $layer = Net::Packet::UDP->new(
       dst => 31222,
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $udp2 = Net::Packet::UDP->new(raw = $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $udp->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::UDP->new(raw = $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 

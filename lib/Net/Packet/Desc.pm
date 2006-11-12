@@ -1,5 +1,5 @@
 #
-# $Id: Desc.pm,v 1.3.2.10 2006/11/05 15:28:13 gomor Exp $
+# $Id: Desc.pm,v 1.3.2.11 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::Desc;
 use strict;
@@ -154,11 +154,19 @@ Load them: use Net::Packet::Consts qw(:desc);
 
 =over 4
 
+=item B<NP_DESC_IPPROTO_IP>
+
+=item B<NP_DESC_IPPROTO_IPv6>
+
+=item B<NP_DESC_IPPROTO_RAW>
+
 =item B<NP_DESC_IPPROTO_TCP>
 
 =item B<NP_DESC_IPPROTO_UDP>
 
 =item B<NP_DESC_IPPROTO_ICMPv4>
+
+=item B<NP_DESC_IP_HDRINCL>
 
 =item B<NP_DESC_L2>
 

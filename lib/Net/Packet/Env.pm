@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.2.2.13 2006/11/05 15:28:28 gomor Exp $
+# $Id: Env.pm,v 1.2.2.18 2006/11/12 16:50:18 gomor Exp $
 #
 package Net::Packet::Env;
 use strict;
@@ -30,6 +30,12 @@ our @AS = qw(
    noFrameAutoDump
    noDescAutoSet
    noDumpAutoSet
+   noFramePadding
+   noFrameComputeChecksums
+   noFrameComputeLengths
+   doFrameReturnList
+   doIPv4Checksum
+   doMemoryOptimizations
    _dnet
 );
 our @AO = qw(
@@ -55,13 +61,19 @@ our $Env = __PACKAGE__->new;
 
 sub new {
    my $self = shift->SUPER::new(
-      debug           => 0,
-      noFrameAutoDesc => 0,
-      noFrameAutoDump => 0,
-      noDescAutoSet   => 0,
-      noDumpAutoSet   => 0,
-      err             => 0,
-      errString       => '',
+      debug                   => 0,
+      noFrameAutoDesc         => 0,
+      noFrameAutoDump         => 0,
+      noDescAutoSet           => 0,
+      noDumpAutoSet           => 0,
+      noFramePadding          => 0,
+      noFrameComputeChecksums => 0,
+      noFrameComputeLengths   => 0,
+      doFrameReturnList       => 0,
+      doIPv4Checksum          => 0,
+      doMemoryOptimizations   => 0,
+      err                     => 0,
+      errString               => '',
       @_,
    );
 
@@ -103,34 +115,58 @@ sub updateDevInfo {
    $self->[$__gatewayIp] = getGatewayIp($ip);
 }
 
+# Thanx to Maddingue
+sub _toDotQuad {
+   my ($i) = @_;
+   ($i >> 24 & 255).'.'.($i >> 16 & 255).'.'.($i >> 8 & 255).'.'.($i & 255);
+}
+
 sub _getDevWin32 {
    my $self = shift;
+
    croak("@{[(caller(0))[3]]}: unable to find a suitable device\n")
       unless $self->[$___dnet]->{name};
+
+   # Get dnet interface name and its subnet
+   my $dnet   = $self->[$___dnet]->{name};
+   my $subnet = Net::Libdnet::addr_net($self->[$___dnet]->{addr});
+   croak("@{[(caller(0))[3]]}: Net::Libdnet::addr_net() error\n")
+      unless $subnet;
+
+   require Net::Pcap;
    my %dev;
    my $err;
-   require Net::Pcap;
    Net::Pcap::findalldevs(\%dev, \$err);
    croak("@{[(caller(0))[3]]}: Net::Pcap::findalldevs() error: $err\n")
       if $err;
-   my $n;
-   for (reverse sort keys %dev) {
-      next if /GenericDialupAdapter/i;
-      s/\\/\\\\/g;
-      $dev{$_} = 'eth'.$n++;
+
+   # Search for corresponding WinPcap interface, via subnet value.
+   # I can't use IP address or MAC address, they are not available
+   # through Net::Pcap (as of version 0.15_01).
+   for my $d (keys %dev) {
+      my $net;
+      my $mask;
+      if (Net::Pcap::lookupnet($d, \$net, \$mask, \$err) < 0) {
+         croak("@{[(caller(0))[3]]}: Net::Pcap::lookupnet(): $d: $err\n")
+      }
+      $net = _toDotQuad($net);
+      if ($net eq $subnet) {
+         #print STDERR "[$dnet] => [$d]\n";
+         return $d;
+      }
    }
-   %dev = map { $dev{$_} => $_ } sort keys %dev;
-   my $eth = $self->[$___dnet]->{name};
-   $dev{$eth};
+   undef;
 }
 
 sub _getDevOther {
    shift->[$___dnet]->{name} || (($^O eq 'linux') ? 'lo' : 'lo0');
 }
 
-sub getSubnet { shift->[$___dnet]->{addr} || '127.0.0.1/8'            }
+sub getSubnet {
+   Net::Libdnet::addr_net(shift->[$___dnet]->{addr}) || '127.0.0.0';
+}
 
-sub getMac    { shift->[$___dnet]->{link_addr} || 'ff:ff:ff:ff:ff:ff' }
+sub getMac { shift->[$___dnet]->{link_addr} || 'ff:ff:ff:ff:ff:ff' }
 
 sub getIp {
    my $ip = shift->[$___dnet]->{addr} || '127.0.0.1';
@@ -140,6 +176,8 @@ sub getIp {
 
 sub _getIp6 {
    my $self = shift;
+   # XXX: No IP6 under Windows for now
+   return '::1' if $^O =~ m/MSWin32|cygwin/i;
    my $dev = $self->[$__dev];
    my $mac = $self->[$__mac];
    my $buf = `/sbin/ifconfig $dev 2> /dev/null`;
@@ -243,7 +281,29 @@ This attribute controls B<Net::Packet::Desc> behaviour regarding global B<$Env> 
 
 =item B<noDumpAutoSet>
 
-Same as abose, but for B<Net::Packet::Dump> object.
+Same as above, but for B<Net::Packet::Dump> object.
+
+=item B<noFramePadding>
+
+By default, when a B<Net::Packet::Frame> object is created from analyzing a raw string (either by taking from B<Net::Packet::Dump> object or from user), padding is achieved to complete the size of 60 bytes. Set this attribute to 1 if you do not want this behaviour.
+
+=item B<doFrameReturnList>
+
+By default, when a B<Net::Packet::Frame> object is created from analyzing a raw string (either by taking from B<Net::Packet::Dump> object or from user), only the first found frame is returned. If you set it to true, an arrayref of B<Net::Packet::Frame> objects will be returned. For example, if you put an IPv6 frame within IPv4, or you get one from network, you will need to use this attribute.
+
+=item B<noFrameComputeChecksums>
+
+=item B<noFrameComputeLengths>
+
+By default, when a B<Net::Packet::Frame> object is packed, all layers checksums and lengths are computed. If you want to do it yourself, set this to true. See B<doIPv4Checksum> for the exception.
+
+=item B<doIPv4Checksum>
+
+This parameter exists to improve performances of the framework. When you send an IPv4 frame at layer 3 (using a B<Net::Packet::DescL3> object), under Unix systems, you MUST not compute IPv4 checksum. The kernel does it. Because this is the more general case (sending IPv4 at layer 3), this parameter is set to false by default. Note: under Windows, because B<Net::Packet::DescL3> is a wrapper around B<Net::Packet::DescL2>, this parameter will be set to true on B<Net::Packet::DescL3> object creation.
+
+=item B<doMemoryOptimizations>
+
+By default, no memory optimizations are made to improve speed. You can enable those optimizations (mostly done in B<Net::Packet::Frame>) in order to gain ~ 10% in memory, at the cost of ~ 10% in speed.
 
 =item B<debug>
 

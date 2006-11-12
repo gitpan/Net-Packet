@@ -1,5 +1,5 @@
 #
-# $Id: Layer.pm,v 1.3.2.2 2006/05/25 12:17:48 gomor Exp $
+# $Id: Layer.pm,v 1.3.2.5 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::Layer;
 use strict;
@@ -17,6 +17,8 @@ our @AS = qw(
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
+
+no strict 'vars';
 
 sub new {
    my $self = shift->SUPER::new(@_);
@@ -48,6 +50,11 @@ sub unpack {
       : @res;
 }
 
+sub getPayloadLength {
+   my $self = shift;
+   $self->[$__payload] ? length($self->[$__payload]) : 0;
+}
+
 sub layer            { NP_LAYER_N_UNKNOWN }
 sub encapsulate      { NP_LAYER_NONE      }
 sub getKey           { shift->is          }
@@ -65,6 +72,12 @@ sub dump {
    $hex =~ s/\\x$//;
    sprintf "@{[$self->layer]}:+@{[$self->is]}: \"$hex\"";
 }
+
+sub _isLayer { shift->layer eq shift()       }
+sub isLayer2 { shift->_isLayer(NP_LAYER_N_2) }
+sub isLayer3 { shift->_isLayer(NP_LAYER_N_3) }
+sub isLayer4 { shift->_isLayer(NP_LAYER_N_4) }
+sub isLayer7 { shift->_isLayer(NP_LAYER_N_7) }
 
 1;
 
@@ -128,6 +141,20 @@ Just returns a string in hexadecimal format which is how the layer appears on th
 
 Returns the layer length in bytes.
 
+=item B<getPayloadLength>
+
+Returns the total length of remaining raw data in bytes (without calling layer length).
+
+=item B<isLayer2>
+
+=item B<isLayer3>
+
+=item B<isLayer4>
+
+=item B<isLayer7>
+
+Returns true if the calling object is, respectively, layer 2, 3, 4 or 7.
+
 =back
 
 =head1 CONSTANTS
@@ -156,6 +183,14 @@ Layer 2 strings.
 
 =item B<NP_LAYER_IPv6>
 
+=item B<NP_LAYER_VLAN>
+
+=item B<NP_LAYER_PPPoE>
+
+=item B<NP_LAYER_PPP>
+
+=item B<NP_LAYER_LLC>
+
 Layer 3 strings.
 
 =item B<NP_LAYER_TCP>
@@ -163,6 +198,10 @@ Layer 3 strings.
 =item B<NP_LAYER_UDP>
 
 =item B<NP_LAYER_ICMPv4>
+
+=item B<NP_LAYER_PPPLCP>
+
+=item B<NP_LAYER_CDP>
 
 Layer 4 strings.
 

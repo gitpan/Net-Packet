@@ -1,5 +1,5 @@
 #
-# $Id: IPv6.pm,v 1.3.2.4 2006/06/11 09:46:30 gomor Exp $
+# $Id: IPv6.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
 #
 package Net::Packet::IPv6;
 use strict;
@@ -33,18 +33,17 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
-      version      => 6,
-      trafficClass => 0,
-      flowLabel    => 0,
-      nextHeader   => NP_IPv6_PROTOCOL_TCP,
-      hopLimit     => 0xff,
-      src          => $Env->ip6,
-      dst          => '::1',
+   shift->SUPER::new(
+      version       => 6,
+      trafficClass  => 0,
+      flowLabel     => 0,
+      nextHeader    => NP_IPv6_PROTOCOL_TCP,
+      hopLimit      => 0xff,
+      src           => $Env->ip6,
+      dst           => '::1',
+      payloadLength => 0,
       @_,
    );
-
-   $self;
 }
 
 sub getLength        { NP_IPv6_HDR_LEN           }
@@ -52,20 +51,20 @@ sub getPayloadLength { shift->[$__payloadLength] }
 
 sub _computePayloadLength {
    my $self = shift;
-   my ($frame) = @_;
+   my ($l4, $l7) = @_;
 
    my $len = 0;
-   $len += $frame->l4->getLength if $frame->l4;
-   $len += $frame->l7->getLength if $frame->l7;
+   $len += $l4->getLength if $l4;
+   $len += $l7->getLength if $l7;
    $self->[$__payloadLength] = $len;
 }
 
 sub computeLengths {
    my $self = shift;
-   my ($frame) = @_;
+   my ($env, $l2, $l3, $l4, $l7) = @_;
 
-   $frame->l4->computeLengths($frame) or return undef;
-   $self->_computePayloadLength($frame);
+   $l4 && ($l4->computeLengths($env, $l2, $l3, $l4, $l7) or return undef);
+   $self->_computePayloadLength($l4, $l7);
    1;
 }
 
@@ -121,21 +120,17 @@ sub encapsulate {
 
 sub print {
    my $self = shift;       
-   
+
    my $i = $self->is;       
    my $l = $self->layer;    
    sprintf
-      "$l:+$i: version:%d  trafficClass:%.2d  flowLabel:%.5d  nextHeader:%.2d\n".
-      "$l: $i: [%s => %s]\n".
-      "$l: $i: length:%d",
-         $self->version,
-         $self->trafficClass,
-         $self->flowLabel,
-         $self->nextHeader,
-         $self->src,
-         $self->dst,
-         $self->getLength,
-   ;
+      "$l:+$i: version:%d  trafficClass:0x%02x  flowLabel:0x%05x  ".
+      "nextHeader:0x%02x\n".
+      "$l: $i: payloadLength:%d  hopLimit:%d\n".
+      "$l: $i: src:%s  dst:%s",
+         $self->[$__version], $self->[$__trafficClass], $self->[$__flowLabel],
+         $self->[$__nextHeader], $self->[$__payloadLength],
+         $self->[$__hopLimit], $self->[$__src], $self->[$__dst];
 }
 
 1;
@@ -146,18 +141,23 @@ Net::Packet::IPv6 - Internet Protocol v6 layer 3 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::IPv6;
+   use Net::Packet::Consts qw(:ipv6);
+   require Net::Packet::IPv6;
 
-   # Build layer to inject to network
-   my $ip6 = Net::Packet::IPv6->new(
+   # Build a layer
+   my $layer = Net::Packet::IPv6->new(
       dst => $hostname6,
    );
+   $layer->pack;
 
-   # Decode from network to create the object
-   # Usually, you do not use this, it is used by Net::Packet::Frame
-   my $ip6Decoded = Net::Packet::IPv6->new(raw = $rawFromNetwork);
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   print $ip6->print, "\n";
+   # Read a raw layer
+   my $layer = Net::Packet::IPv6->new(raw = $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 

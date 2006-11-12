@@ -1,5 +1,5 @@
 #
-# $Id: DescL3.pm,v 1.3.2.11 2006/11/04 18:42:43 gomor Exp $
+# $Id: DescL3.pm,v 1.3.2.12 2006/11/11 10:56:26 gomor Exp $
 #
 package Net::Packet::DescL3;
 use strict;
@@ -60,6 +60,7 @@ sub _newWin32 {
 sub _buildEthHeaderWin32 {
    my $self = shift;
    use Net::Packet::Env qw($Env);
+   $Env->doIPv4Checksum(1);
    require Net::Packet::ETH;
    use Net::Packet::Consts qw(:eth);
    my $eth = Net::Packet::ETH->new(

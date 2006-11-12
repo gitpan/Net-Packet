@@ -1,5 +1,5 @@
 #
-# $Id: Consts.pm,v 1.2.2.2 2006/06/03 09:24:16 gomor Exp $
+# $Id: Consts.pm,v 1.2.2.8 2006/11/12 18:10:19 gomor Exp $
 #
 package Net::Packet::Consts;
 use strict;
@@ -46,6 +46,11 @@ our %EXPORT_TAGS = (
       NP_LAYER_7
       NP_LAYER_NONE
       NP_LAYER_UNKNOWN
+      NP_LAYER_PPPoE
+      NP_LAYER_PPP
+      NP_LAYER_LLC     
+      NP_LAYER_PPPLCP
+      NP_LAYER_CDP
       NP_LAYER_N_2
       NP_LAYER_N_3
       NP_LAYER_N_4
@@ -59,6 +64,7 @@ our %EXPORT_TAGS = (
       NP_ETH_TYPE_IPv6
       NP_ETH_TYPE_VLAN
       NP_ETH_TYPE_ARP
+      NP_ETH_TYPE_PPPoE
    )],
    null => [qw(
       NP_NULL_HDR_LEN
@@ -72,12 +78,15 @@ our %EXPORT_TAGS = (
       NP_SLL_ADDRESS_TYPE_512
       NP_SLL_PROTOCOL_IPv4
       NP_SLL_PROTOCOL_IPv6
+      NP_SLL_PROTOCOL_ARP              
+      NP_SLL_PROTOCOL_VLAN             
    )],
    vlan => [qw(
       NP_VLAN_HDR_LEN
       NP_VLAN_TYPE_ARP
       NP_VLAN_TYPE_IPv4
       NP_VLAN_TYPE_IPv6
+      NP_VLAN_TYPE_VLAN
    )],
    arp => [qw(
       NP_ARP_HDR_LEN
@@ -95,6 +104,7 @@ our %EXPORT_TAGS = (
       NP_IPv4_PROTOCOL_TCP
       NP_IPv4_PROTOCOL_UDP
       NP_IPv4_PROTOCOL_ICMPv4
+      NP_IPv4_PROTOCOL_IPv6
       NP_IPv4_MORE_FRAGMENT
       NP_IPv4_DONT_FRAGMENT
       NP_IPv4_RESERVED_FRAGMENT
@@ -104,6 +114,53 @@ our %EXPORT_TAGS = (
       NP_IPv6_V6
       NP_IPv6_PROTOCOL_TCP
       NP_IPv6_PROTOCOL_UDP
+   )],
+   pppoe => [qw(
+      NP_PPPoE_HDR_LEN
+   )],
+   ppp => [qw(
+      NP_PPP_HDR_LEN
+      NP_PPP_PROTOCOL_IPv4
+      NP_PPP_PROTOCOL_PPPLCP
+   )],
+   llc => [qw(
+      NP_LLC_HDR_LEN
+      NP_LLC_OUI_CISCO
+      NP_LLC_PID_CDP
+      NP_LLC_PID_STP
+      NP_LLC_DSAP_SNAP
+      NP_LLC_SSAP_SNAP
+   )],
+   ppplcp => [qw(
+      NP_PPPLCP_HDR_LEN
+      NP_PPPLCP_CODE_ECHO_REQUEST
+      NP_PPPLCP_CODE_ECHO_REPLY
+   )],
+   cdp => [qw(
+      NP_CDP_HDR_LEN
+      NP_CDP_TYPE_DEVICE_ID
+      NP_CDP_TYPE_ADDRESSES
+      NP_CDP_TYPE_UNKNOWN_0003
+      NP_CDP_TYPE_CAPABILITIES
+      NP_CDP_TYPE_SOFTWARE_VERSION
+      NP_CDP_TYPE_PLATFORM
+      NP_CDP_TYPE_UNKNOWN_0007
+      NP_CDP_TYPE_UNKNOWN_0008
+      NP_CDP_TYPE_VTP_MANAGEMENT_DOMAIN
+      NP_CDP_TYPE_UNKNOWN_000a
+      NP_CDP_TYPE_DUPLEX
+      NP_CDP_TYPE_UNKNOWN_000c
+      NP_CDP_TYPE_UNKNOWN_000d
+      NP_CDP_TYPE_VOIP_VLAN_REPLY
+      NP_CDP_TYPE_UNKNOWN_000f
+      NP_CDP_TYPE_UNKNOWN_0010
+      NP_CDP_TYPE_UNKNOWN_0011
+      NP_CDP_TYPE_TRUST_BITMAP
+      NP_CDP_TYPE_UNTRUSTED_PORT_COS
+      NP_CDP_TYPE_SYSTEM_NAME
+      NP_CDP_TYPE_SYSTEM_OBJECT_ID
+      NP_CDP_TYPE_UNKNOWN_0016
+      NP_CDP_TYPE_LOCATION
    )],
    tcp => [qw(
       NP_TCP_HDR_LEN
@@ -162,6 +219,11 @@ our @EXPORT_OK = (
    @{$EXPORT_TAGS{tcp}},
    @{$EXPORT_TAGS{udp}},
    @{$EXPORT_TAGS{icmpv4}},
+   @{$EXPORT_TAGS{pppoe}},
+   @{$EXPORT_TAGS{ppp}},
+   @{$EXPORT_TAGS{llc}},
+   @{$EXPORT_TAGS{ppplcp}},
+   @{$EXPORT_TAGS{cdp}},
 );
 
 use constant NP_DESC_IPPROTO_IP     => 0;
@@ -198,6 +260,11 @@ use constant NP_LAYER_ICMPv4  => 'ICMPv4';
 use constant NP_LAYER_7       => 'Layer7';
 use constant NP_LAYER_NONE    => 'NONE';
 use constant NP_LAYER_UNKNOWN => 'UNKNOWN';
+use constant NP_LAYER_PPPoE   => 'PPPoE';
+use constant NP_LAYER_PPP     => 'PPP';
+use constant NP_LAYER_LLC     => 'LLC';
+use constant NP_LAYER_PPPLCP  => 'PPPLCP';
+use constant NP_LAYER_CDP     => 'CDP';
 use constant NP_LAYER_N_2       => 'L2';
 use constant NP_LAYER_N_3       => 'L3';
 use constant NP_LAYER_N_4       => 'L4';
@@ -210,6 +277,7 @@ use constant NP_ETH_TYPE_IPv4      => 0x0800;
 use constant NP_ETH_TYPE_ARP       => 0x0806;
 use constant NP_ETH_TYPE_VLAN      => 0x8100;
 use constant NP_ETH_TYPE_IPv6      => 0x86dd;
+use constant NP_ETH_TYPE_PPPoE     => 0x8864;
 
 use constant NP_NULL_HDR_LEN   => 4;
 use constant NP_NULL_TYPE_IPv4 => 0x02000000;
@@ -221,11 +289,14 @@ use constant NP_SLL_PACKET_TYPE_UNICAST_TO_US => 0;
 use constant NP_SLL_ADDRESS_TYPE_512          => 512;
 use constant NP_SLL_PROTOCOL_IPv4             => NP_ETH_TYPE_IPv4;
 use constant NP_SLL_PROTOCOL_IPv6             => NP_ETH_TYPE_IPv6;
+use constant NP_SLL_PROTOCOL_ARP              => NP_ETH_TYPE_ARP;
+use constant NP_SLL_PROTOCOL_VLAN             => NP_ETH_TYPE_VLAN;
 
 use constant NP_VLAN_HDR_LEN   => 4;
 use constant NP_VLAN_TYPE_ARP  => NP_ETH_TYPE_ARP;
 use constant NP_VLAN_TYPE_IPv4 => NP_ETH_TYPE_IPv4;
 use constant NP_VLAN_TYPE_IPv6 => NP_ETH_TYPE_IPv6;
+use constant NP_VLAN_TYPE_VLAN => NP_ETH_TYPE_VLAN;
 
 use constant NP_ARP_HDR_LEN        => 28;
 use constant NP_ARP_HTYPE_ETH      => 0x0001;
@@ -241,6 +312,7 @@ use constant NP_IPv4_V4                => 4;
 use constant NP_IPv4_PROTOCOL_ICMPv4   => 1;
 use constant NP_IPv4_PROTOCOL_TCP      => 6;
 use constant NP_IPv4_PROTOCOL_UDP      => 17;
+use constant NP_IPv4_PROTOCOL_IPv6     => 41;
 use constant NP_IPv4_MORE_FRAGMENT     => 1;
 use constant NP_IPv4_DONT_FRAGMENT     => 2;
 use constant NP_IPv4_RESERVED_FRAGMENT => 4;
@@ -249,6 +321,48 @@ use constant NP_IPv6_HDR_LEN      => 40;
 use constant NP_IPv6_V6           => 6;
 use constant NP_IPv6_PROTOCOL_TCP => NP_IPv4_PROTOCOL_TCP();
 use constant NP_IPv6_PROTOCOL_UDP => NP_IPv4_PROTOCOL_UDP();
+
+use constant NP_PPPoE_HDR_LEN => 6;
+
+use constant NP_PPP_HDR_LEN         => 2;
+use constant NP_PPP_PROTOCOL_IPv4   => 0x0021;
+use constant NP_PPP_PROTOCOL_PPPLCP => 0xc021;
+
+use constant NP_LLC_HDR_LEN   => 8;
+use constant NP_LLC_OUI_CISCO => 0x00000c;
+use constant NP_LLC_PID_CDP   => 0x2000;
+use constant NP_LLC_PID_STP   => 0x010b;
+use constant NP_LLC_DSAP_SNAP => 0x2a;
+use constant NP_LLC_SSAP_SNAP => NP_LLC_DSAP_SNAP();
+
+use constant NP_PPPLCP_HDR_LEN           => 8;
+use constant NP_PPPLCP_CODE_ECHO_REQUEST => 0x09;
+use constant NP_PPPLCP_CODE_ECHO_REPLY   => 0x0a;
+
+use constant NP_CDP_HDR_LEN                    => 4;
+use constant NP_CDP_TYPE_DEVICE_ID             => 0x0001;
+use constant NP_CDP_TYPE_ADDRESSES             => 0x0002;
+use constant NP_CDP_TYPE_UNKNOWN_0003          => 0x0003;
+use constant NP_CDP_TYPE_CAPABILITIES          => 0x0004;
+use constant NP_CDP_TYPE_SOFTWARE_VERSION      => 0x0005;
+use constant NP_CDP_TYPE_PLATFORM              => 0x0006;
+use constant NP_CDP_TYPE_UNKNOWN_0007          => 0x0007;
+use constant NP_CDP_TYPE_UNKNOWN_0008          => 0x0008;
+use constant NP_CDP_TYPE_VTP_MANAGEMENT_DOMAIN => 0x0009;
+use constant NP_CDP_TYPE_UNKNOWN_000a          => 0x000a;
+use constant NP_CDP_TYPE_DUPLEX                => 0x000b;
+use constant NP_CDP_TYPE_UNKNOWN_000c          => 0x000c;
+use constant NP_CDP_TYPE_UNKNOWN_000d          => 0x000d;
+use constant NP_CDP_TYPE_VOIP_VLAN_REPLY       => 0x000e;
+use constant NP_CDP_TYPE_UNKNOWN_000f          => 0x000f;
+use constant NP_CDP_TYPE_UNKNOWN_0010          => 0x0010;
+use constant NP_CDP_TYPE_UNKNOWN_0011          => 0x0011;
+use constant NP_CDP_TYPE_TRUST_BITMAP          => 0x0012;
+use constant NP_CDP_TYPE_UNTRUSTED_PORT_COS    => 0x0013;
+use constant NP_CDP_TYPE_SYSTEM_NAME           => 0x0014;
+use constant NP_CDP_TYPE_SYSTEM_OBJECT_ID      => 0x0015;
+use constant NP_CDP_TYPE_UNKNOWN_0016          => 0x0016;
+use constant NP_CDP_TYPE_LOCATION              => 0x0017;
 
 use constant NP_TCP_HDR_LEN  => 20;
 use constant NP_TCP_FLAG_FIN => 0x01;

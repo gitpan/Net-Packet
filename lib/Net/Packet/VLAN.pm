@@ -1,5 +1,5 @@
 #
-# $Id: VLAN.pm,v 1.2.2.3 2006/06/04 13:37:07 gomor Exp $
+# $Id: VLAN.pm,v 1.2.2.8 2006/11/12 22:38:11 gomor Exp $
 #
 package Net::Packet::VLAN;
 use strict;
@@ -8,6 +8,7 @@ use warnings;
 require Net::Packet::Layer3;
 our @ISA = qw(Net::Packet::Layer3);
 
+use Net::Packet::Env qw($Env);
 use Net::Packet::Consts qw(:vlan :layer);
 require Net::Packet::Frame;
 require Bit::Vector;
@@ -25,21 +26,22 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 no strict 'vars';
 
 sub new {
-   my $self = shift->SUPER::new(
+   shift->SUPER::new(
       priority => 0,
       cfi      => 0,
       id       => 0,
       type     => NP_VLAN_TYPE_IPv4,
       @_,
    );
-
-   $self;
 }
 
 sub getLength {
    my $self = shift;
-   my $frame = $self->[$__frame];
-   return(length($frame->raw) + NP_VLAN_HDR_LEN) if $frame;
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      my $frame = $self->[$__frame];
+      return(length($frame->raw) + NP_VLAN_HDR_LEN) if $frame;
+   }
    NP_VLAN_HDR_LEN;
 }
 
@@ -51,11 +53,19 @@ sub pack {
    my $v12 = Bit::Vector->new_Dec(12, $self->[$__id]);
    my $v16 = $v3->Concat_List($v1, $v12);
 
-   $self->[$__raw] = $self->SUPER::pack('nna*',
+   $self->[$__raw] = $self->SUPER::pack('nn',
       $v16->to_Dec,
       $self->[$__type],
-      $self->[$__frame]->raw,
    ) or return undef;
+
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      if ($self->[$__frame] && $self->[$__frame]->raw) {
+         $self->[$_raw] .= $self->SUPER::pack('a*',
+            $self->[$__frame]->raw,
+         );
+      }
+   }
 
    1;
 }
@@ -73,9 +83,41 @@ sub unpack {
    $self->[$__cfi]      = $v16->Chunk_Read(1, 12);
    $self->[$__id]       = $v16->Chunk_Read(12, 0);
    $self->[$__type]     = $type;
-   $self->[$__frame]    = Net::Packet::Frame->new(raw => $payload);
+
+   # Keep old behaviour for backward compat
+   if (! $Env->doFrameReturnList) {
+      $self->[$__frame] = Net::Packet::Frame->new(
+         raw         => $payload,
+         encapsulate => $self->encapsulate,
+      );
+   }
+   else {
+      $self->[$__payload] = $payload;
+   }
 
    1;
+}
+
+sub encapsulate {
+   my $self = shift;
+
+   my $types = {
+      NP_VLAN_TYPE_IPv4() => NP_LAYER_IPv4(),
+      NP_VLAN_TYPE_IPv6() => NP_LAYER_IPv6(),
+      NP_VLAN_TYPE_ARP()  => NP_LAYER_ARP(),
+      NP_VLAN_TYPE_VLAN() => NP_LAYER_VLAN(),
+   };
+
+   if ($self->[$__type] <= 1500 && $self->[$__payload]) {
+      my $payload = CORE::unpack('H*', $self->[$__payload]);
+      if ($payload =~ /^aaaa/) {
+         return NP_LAYER_LLC();
+      }
+      return NP_LAYER_UNKNOWN();
+   }
+   else {
+      $types->{$self->type} || NP_LAYER_UNKNOWN();
+   }
 }
 
 sub print {
@@ -83,8 +125,8 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: priority:%d  cfi:%d  id:%d  type:0x%04x",
-      $self->priority, $self->cfi, $self->id, $self->type;
+   sprintf "$l:+$i: priority:0x%01x  cfi:0x%01x  id:0x%02x  type:0x%02x",
+      $self->[$__priority], $self->[$__cfi], $self->[$__id], $self->[$__type];
 }
 
 #
@@ -93,6 +135,7 @@ sub print {
 
 sub _isType    { shift->[$__type] == shift()                      }
 sub isTypeArp  { shift->_isType(NP_VLAN_TYPE_ARP)                 }
+sub isTypeVlan { shift->_isType(NP_VLAN_TYPE_VLAN)                }
 sub isTypeIpv4 { shift->_isType(NP_VLAN_TYPE_IPv4)                }
 sub isTypeIpv6 { shift->_isType(NP_VLAN_TYPE_IPv6)                }
 sub isTypeIp   { my $self = shift; $self->isIpv4 || $self->isIpv6 }
@@ -107,58 +150,26 @@ Net::Packet::VLAN - 802.1Q layer 3 object
 
 =head1 SYNOPSIS
 
-   use Net::Packet::Env qw($Env);
-   use Net::Packet::VLAN;
+   use Net::Packet::Consts qw(:vlan);
+   require Net::Packet::VLAN;
 
-   # Load needed constants
-   use Net::Packet::Consts qw(:ipv4 :eth);
-
-   # In order to avoid autocreation of Desc and Dump objects
-   # Because VLAN is particuliar, we must do it manually
-   use Net::Packet::DescL2;
-   use Net::Packet::Dump;
-
-   Net::Packet::DescL2->new;
-   Net::Packet::Dump->new(filter => 'vlan');
-
-   # Another thing to note, do not send VLAN frames in a 
-   # vlan interface, it would be encapsulated another time ;)
-   # Instead, send it to the parent interface
-
-   # So, we will play an echo-request inside a vlan
-   use Net::Packet::Frame;
-   use Net::Packet::IPv4;
-   use Net::Packet::ICMPv4;
-   my $echo = Net::Packet::Frame->new(
-      l3 => Net::Packet::IPv4->new(
-         src      => $vlanSrcIp,
-         dst      => $vlanDstIp,
-         protocol => NP_IPv4_PROTOCOL_ICMPv4,
-         doChecksum => 1, # Because system will not do it,
-                          # at least under FreeBSD
-         noFixLen   => 1, # Well, FreeBSD needs fixing, but not 
-                          # when frames are injected into VLANs ;)
-      ),
-      l4 => Net::Packet::ICMPv4->new,
+   # Build a layer
+   my $layer = Net::Packet::VLAN->new(
+      priority => 0,
+      cfi      => 0,
+      id       => 0,
+      type     => NP_VLAN_TYPE_IPv4,
    );
+   $layer->pack;
 
-   # Frame to inject is built, time to encapsulate it into a VLAN frame
-   use Net::Packet::ETH;
-   my $frame = Net::Packet::Frame->new(
-      l2 => Net::Packet::ETH->new(
-         dst  => $vlanDstMac,
-         type => NP_ETH_TYPE_VLAN,
-      ),
-      l3 => Net::Packet::VLAN->new(
-         frame => $echo,
-      ),
-   );
+   print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
-   # Done !
-   print $frame->l3->print, "\n";
-   print $frame->l3->frame->l3->print, "\n";
-   print $frame->l3->frame->l4->print, "\n";
-   $frame->send;
+   # Read a raw layer
+   my $layer = Net::Packet::VLAN->new(raw => $raw);
+
+   print $layer->print."\n";
+   print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
+      if $layer->payload;
 
 =head1 DESCRIPTION
 
@@ -190,7 +201,7 @@ Which type the next encapsulated layer is.
 
 =item B<frame>
 
-This is a B<Net::Packet::Frame> object, built it like any other such frame. Just to mention that you should use B<doChecksum> attribute if you put in a B<Net::Packet::IPv4> layer, and maybe the B<noFixLen> attribute also.
+This is a B<Net::Packet::Frame> object, built it like any other such frame. Just to mention that you should use B<dnoFexLien> attribute if you put in a B<Net::Packet::IPv4> layer.
 
 =back
 
@@ -218,6 +229,18 @@ Packs all attributes into a raw format, in order to inject to network. Returns 1
 
 Unpacks raw data from network and stores attributes into the object. Returns 1 on success, undef otherwise.
 
+=item B<isTypeArp>
+
+=item B<isTypeIpv4>
+
+=item B<isTypeIpv6>
+
+=item B<isTypeIp> - is type IPv4 or IPv6
+
+=item B<isTypeVlan>
+
+Helper methods. Return true is the encapsulated layer is of specified type, false otherwise.
+
 =back
 
 =head1 CONSTANTS
@@ -231,6 +254,8 @@ Load them: use Net::Packet::Consts qw(:vlan);
 =item B<NP_VLAN_TYPE_IPv4>
 
 =item B<NP_VLAN_TYPE_IPv6>
+
+=item B<NP_VLAN_TYPE_VLAN>
 
 Various supported encapsulated frame types.
 

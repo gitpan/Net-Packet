@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.3.2.12 2006/10/29 11:49:45 gomor Exp $
+# $Id: Dump.pm,v 1.3.2.15 2006/11/12 22:37:40 gomor Exp $
 #
 package Net::Packet::Dump;
 use strict;
@@ -12,7 +12,7 @@ our @ISA = qw(Class::Gomor::Array);
 use Net::Packet::Env qw($Env);
 require Net::Packet::Frame;
 use Net::Packet::Utils qw(getRandom32bitsInt);
-use Net::Packet::Consts qw(:dump);
+use Net::Packet::Consts qw(:dump :layer);
 
 use Net::Pcap;
 use Time::HiRes qw(gettimeofday);
@@ -419,21 +419,31 @@ sub _setTimestamp {
    $time[0].'.'.sprintf("%06d", $time[1]);
 }
 
+my $mapLinks = {
+   NP_DUMP_LINK_NULL()   => NP_LAYER_NULL(),
+   NP_DUMP_LINK_EN10MB() => NP_LAYER_ETH(),
+   NP_DUMP_LINK_RAW()    => NP_LAYER_RAW(),
+   NP_DUMP_LINK_SLL()    => NP_LAYER_SLL(),
+};
+
 sub _pcapNext {
    my $self = shift;
+
    my %hdr;
    if (my $raw = Net::Pcap::next($self->[$___pcapd], \%hdr)) {
       my $ts = $self->[$__keepTimestamp] ? $self->_getTimestamp(\%hdr)
                                          : $self->_setTimestamp;
       my $frame = Net::Packet::Frame->new(
-         env       => $self->env,
-         raw       => $raw,
-         timestamp => $ts,
+         env         => $self->env,
+         raw         => $raw,
+         timestamp   => $ts,
+         encapsulate => $mapLinks->{$self->[$__link]} || NP_LAYER_UNKNOWN,
       ) or return undef;
 
       $self->_addToFramesSorted($frame) unless $self->[$__noStore];
       return $frame;
    }
+
    undef;
 }
 
@@ -877,6 +887,30 @@ You pass a B<Net::Packet::Frame> has parameter, and it returns an array of all f
 =item B<framesSorted> (scalar)
 
 Method mostly used internally to store in a hashref a captured frame. This is used to retrieve it quickly on B<recv> call.
+
+=back
+
+=head1 CONSTANTS
+
+=over 4
+
+=item B<NP_DUMP_LINK_NULL>
+
+=item B<NP_DUMP_LINK_EN10MB>
+
+=item B<NP_DUMP_LINK_RAW>
+
+=item B<NP_DUMP_LINK_SLL>
+
+Constants for first layers within the pcap file.
+
+=item B<NP_DUMP_MODE_OFFLINE>
+
+=item B<NP_DUMP_MODE_ONLINE>
+
+=item B<NP_DUMP_MODE_WRITER>
+
+Constants to set the dump mode.
 
 =back
 
