@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.3.2.15 2006/11/12 22:37:40 gomor Exp $
+# $Id: Dump.pm,v 1.3.2.17 2006/11/15 19:32:29 gomor Exp $
 #
 package Net::Packet::Dump;
 use strict;
@@ -161,8 +161,8 @@ sub stop {
    1;
 }
 
-sub isFather {   shift->[$___pid] }
-sub isSon    { ! shift->[$___pid] }
+sub isFather { shift->[$___pid] ? 1 : 0 }
+sub isSon    { shift->[$___pid] ? 0 : 1 }
 
 sub _sStore {
    lock_store(\$_[1], $_[0]->[$___sName])
@@ -306,6 +306,10 @@ sub clean {
       }
    }
 
+   if ($self->[$___sName] && -f $self->[$___sName]) {
+      unlink($self->[$___sName]);
+   }
+
    1;
 }
 
@@ -403,8 +407,16 @@ sub _openFileWriter {
 sub _addToFramesSorted {
    my $self = shift;
    my ($frame) = @_;
-   $self->framesSorted($frame);
-   push @{$self->[$__frames]}, $frame;
+   if (! $self->[$__env]->doFrameReturnList) {
+      $self->framesSorted($frame);
+      push @{$self->[$__frames]}, $frame;
+   }
+   else {
+      for my $f (@$frame) {
+         $self->framesSorted($f);
+         push @{$self->[$__frames]}, $f;
+      }
+   }
 }
 
 sub _getTimestamp {
@@ -424,6 +436,7 @@ my $mapLinks = {
    NP_DUMP_LINK_EN10MB() => NP_LAYER_ETH(),
    NP_DUMP_LINK_RAW()    => NP_LAYER_RAW(),
    NP_DUMP_LINK_SLL()    => NP_LAYER_SLL(),
+   NP_DUMP_LINK_PPP()    => NP_LAYER_PPP(),
 };
 
 sub _pcapNext {

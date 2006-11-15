@@ -1,12 +1,12 @@
 #
-# $Id: PPPLCP.pm,v 1.1.2.2 2006/11/12 16:54:50 gomor Exp $
+# $Id: PPPLCP.pm,v 1.1.2.4 2006/11/14 23:14:34 gomor Exp $
 #
 package Net::Packet::PPPLCP;
 use strict;
 use warnings;
 
-require Net::Packet::Layer4;
-our @ISA = qw(Net::Packet::Layer4);
+require Net::Packet::Layer3;
+our @ISA = qw(Net::Packet::Layer3);
 
 use Net::Packet::Consts qw(:ppplcp :layer);
 
@@ -52,7 +52,8 @@ sub unpack {
    my $self = shift;
 
    my ($code, $identifier, $length, $magicNumber, $payload) =
-      $self->SUPER::unpack('CCnN a*', $self->[$__raw]);
+      $self->SUPER::unpack('CCnN a*', $self->[$__raw])
+         or return undef;
 
    $self->[$__code]        = $code;
    $self->[$__identifier]  = $identifier;
@@ -77,7 +78,7 @@ sub print {
    my $l = $self->layer;
    my $i = $self->is;
    sprintf "$l:+$i: code:0x%02x  identifier:0x%02x  length:%d  ".
-           "magicNumber:0x%04x\n",
+           "magicNumber:0x%04x",
       $self->[$__code], $self->[$__identifier], $self->[$__length],
       $self->[$__magicNumber];
 }
@@ -88,7 +89,7 @@ __END__
 
 =head1 NAME
 
-Net::Packet::PPPLCP - PPP Link Control Protocol layer 4 object
+Net::Packet::PPPLCP - PPP Link Control Protocol layer 3 object
 
 =head1 SYNOPSIS
 
@@ -117,7 +118,7 @@ Net::Packet::PPPLCP - PPP Link Control Protocol layer 4 object
 
 This modules implements the encoding and decoding of the PPP Link Control Protocol layer.
 
-See also B<Net::Packet::Layer> and B<Net::Packet::Layer4> for other attributes and methods.
+See also B<Net::Packet::Layer> and B<Net::Packet::Layer3> for other attributes and methods.
 
 =head1 ATTRIBUTES
 

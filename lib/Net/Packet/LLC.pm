@@ -1,5 +1,5 @@
 #
-# $Id: LLC.pm,v 1.1.2.3 2006/11/12 18:10:41 gomor Exp $
+# $Id: LLC.pm,v 1.1.2.4 2006/11/14 19:16:31 gomor Exp $
 #
 package Net::Packet::LLC;
 use strict;
@@ -65,7 +65,8 @@ sub unpack {
    my $self = shift;
 
    my ($dsapIgSsapCr, $control, $oui, $pid, $payload) =
-      $self->SUPER::unpack('nCB24n a*', $self->[$__raw]);
+      $self->SUPER::unpack('nCB24n a*', $self->[$__raw])
+         or return undef;
 
    my $v16 = Bit::Vector->new_Dec(16, $dsapIgSsapCr);
    $self->[$__dsap] = $v16->Chunk_Read(7, 0);
@@ -87,7 +88,7 @@ sub unpack {
 sub encapsulate {
    my $types = {
       NP_LLC_PID_CDP() => NP_LAYER_CDP(),
-      #NP_LLC_PID_STP() => NP_LAYER_STP(),
+      NP_LLC_PID_STP() => NP_LAYER_STP(),
    };
 
    $types->{shift->[$__pid]} || NP_LAYER_UNKNOWN();

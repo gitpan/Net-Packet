@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.3.2.23 2006/11/12 19:21:58 gomor Exp $
+# $Id: Frame.pm,v 1.3.2.24 2006/11/15 19:40:11 gomor Exp $
 #
 package Net::Packet::Frame;
 use warnings;
@@ -24,6 +24,9 @@ require Net::Packet::PPP;
 require Net::Packet::LLC;
 require Net::Packet::PPPLCP;
 require Net::Packet::CDP;
+require Net::Packet::STP;
+require Net::Packet::OSPF;
+require Net::Packet::IGMPv4;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
 
@@ -159,6 +162,12 @@ my $whichLink = {
       sub { Net::Packet::PPPLCP->new(raw => shift()) },
    NP_LAYER_CDP()    =>
       sub { Net::Packet::CDP->new(raw => shift())    },
+   NP_LAYER_STP()    =>
+      sub { Net::Packet::STP->new(raw => shift())    },
+   NP_LAYER_OSPF()   =>
+      sub { Net::Packet::OSPF->new(raw => shift())   },
+   NP_LAYER_IGMPv4() =>
+      sub { Net::Packet::IGMPv4->new(raw => shift()) },
    NP_LAYER_7()      =>
       sub { Net::Packet::Layer7->new(raw => shift()) },
 };
@@ -188,6 +197,7 @@ sub unpack {
    my $prev;
    my $n = 0;
    my $raw  = $self->[$__raw];
+   my $rawLength = length($raw);
    my $oRaw = $raw;
    # No more than a thousand nested layers, maybe should be an Env param
    for (1..1000) {
@@ -213,6 +223,16 @@ sub unpack {
       unless ($frames[$n]) {
          $frames[$n] = Net::Packet::Frame->new;
          $frames[$n]->[$__raw] = $oRaw;
+
+         # We strip the payload for last layer of previously built frame, 
+         # because it is now analyzed within the new frame
+         my $m = $n - 1;
+         if ($m >= 0) {
+            if ($frames[$m]->[$__l7])    { $frames[$m]->[$__l7]->payload(undef)}
+            elsif ($frames[$m]->[$__l4]) { $frames[$m]->[$__l4]->payload(undef)}
+            elsif ($frames[$m]->[$__l3]) { $frames[$m]->[$__l3]->payload(undef)}
+            elsif ($frames[$m]->[$__l2]) { $frames[$m]->[$__l2]->payload(undef)}
+         }
       }
       if    ($l->isLayer2) { $frames[$n]->[$__l2] = $l }
       elsif ($l->isLayer3) { $frames[$n]->[$__l3] = $l }
@@ -231,7 +251,7 @@ sub unpack {
       $oRaw = $raw;
    }
 
-   $frames[-1]->_getPadding;
+   $frames[-1]->_getPadding($rawLength);
 
    $self->[$__env]->doFrameReturnList ? \@frames : $frames[0];
 }
@@ -348,13 +368,14 @@ sub _padFrame {
 
 sub _getPadding {
    my $self = shift;
+   my ($rawLength) = @_;
 
-   my $len       = $self->getLengthFromL2;
-   my $rawLength = length($self->[$__raw]);
+   my $thisLength = length($self->[$__raw]);
 
    # There is a chance this is a memory bug to align with 60 bytes
    # We check it to see if it is true Layer7, or just a padding
-   if ($self->[$__l7] && $rawLength == 60 && $self->[$__l3] && $self->[$__l4]) {
+   if ($self->[$__l7] && $thisLength == 60
+   &&  $self->[$__l3] && $self->[$__l4]) {
       my $pLen = $self->[$__l3]->getPayloadLength;
       my $nLen = $self->[$__l4]->getLength;
       if ($pLen == $nLen) {
@@ -364,6 +385,10 @@ sub _getPadding {
       return 1;
    }
 
+   # No padding
+   return 1 if $rawLength > 60;
+
+   my $len     = $self->getLengthFromL2;
    my $padding = substr($self->[$__raw], $len, $rawLength - $len);
    $self->[$__padding] = $padding;
 }
@@ -496,20 +521,49 @@ sub recv {
 sub print {
    my $self = shift;
    my $str = '';
-   $str .= $self->l2->print."\n" if $self->l2;
-   $str .= $self->l3->print."\n" if $self->l3;
-   $str .= $self->l4->print."\n" if $self->l4;
-   $str .= $self->l7->print."\n" if $self->l7;
+   $str .= $self->[$__l2]->print."\n" if $self->[$__l2];
+   $str .= $self->[$__l3]->print."\n" if $self->[$__l3];
+   $str .= $self->[$__l4]->print."\n" if $self->[$__l4];
+   $str .= $self->[$__l7]->print."\n" if $self->[$__l7];
+
+   $str =~ s/\n$//s;
+
+   # Print remaining to be decoded, if any
+   if ($self->[$__l7]) {
+      $str .= "\n".'L7: payload:'.CORE::unpack('H*', $self->[$__l7]->payload)
+         if $self->[$__l7]->payload;
+   }
+   elsif ($self->[$__l4]) {
+      $str .= "\n".'L4: payload:'.CORE::unpack('H*', $self->[$__l4]->payload)
+         if $self->[$__l4]->payload;
+   }
+   elsif ($self->[$__l3]) {
+      $str .= "\n".'L3: payload:'.CORE::unpack('H*', $self->[$__l3]->payload)
+         if $self->[$__l3]->payload;
+   }
+   elsif ($self->[$__l2]) {
+      $str .= "\n".'L2: payload:'.CORE::unpack('H*', $self->[$__l2]->payload)
+         if $self->[$__l2]->payload;
+   }
+
+   # Print the padding, if any
+   if ($self->[$__padding]) {
+      $str .= "\n".'Padding: '.CORE::unpack('H*', $self->[$__padding]);
+   }
+
    $str;
 }
 
 sub dump {
    my $self = shift;
    my $str = '';
-   $str .= $self->l2->dump."\n" if $self->l2;
-   $str .= $self->l3->dump."\n" if $self->l3;
-   $str .= $self->l4->dump."\n" if $self->l4;
-   $str .= $self->l7->dump."\n" if $self->l7;
+   $str .= $self->[$__l2]->dump."\n" if $self->[$__l2];
+   $str .= $self->[$__l3]->dump."\n" if $self->[$__l3];
+   $str .= $self->[$__l4]->dump."\n" if $self->[$__l4];
+   $str .= $self->[$__l7]->dump."\n" if $self->[$__l7];
+   if ($self->[$__padding]) {
+      $str .= 'Padding: '.CORE::unpack('H*', $self->[$__padding])."\n";
+   }
    $str;
 }
 
@@ -525,18 +579,21 @@ sub isEth    { shift->_isL2(NP_LAYER_ETH)    }
 sub isRaw    { shift->_isL2(NP_LAYER_RAW)    }
 sub isNull   { shift->_isL2(NP_LAYER_NULL)   }
 sub isSll    { shift->_isL2(NP_LAYER_SLL)    }
+sub isPpp    { shift->_isL2(NP_LAYER_PPP)    }
 sub isArp    { shift->_isL3(NP_LAYER_ARP)    }
 sub isIpv4   { shift->_isL3(NP_LAYER_IPv4)   }
 sub isIpv6   { shift->_isL3(NP_LAYER_IPv6)   }
 sub isVlan   { shift->_isL3(NP_LAYER_VLAN)   }
 sub isPppoe  { shift->_isL3(NP_LAYER_PPPoE)  }
-sub isPpp    { shift->_isL3(NP_LAYER_PPP)    }
 sub isLlc    { shift->_isL3(NP_LAYER_LLC)    }
 sub isTcp    { shift->_isL4(NP_LAYER_TCP)    }
 sub isUdp    { shift->_isL4(NP_LAYER_UDP)    }
 sub isIcmpv4 { shift->_isL4(NP_LAYER_ICMPv4) }
 sub isPpplcp { shift->_isL4(NP_LAYER_PPPLCP) }
 sub isCdp    { shift->_isL4(NP_LAYER_CDP)    }
+sub isStp    { shift->_isL4(NP_LAYER_STP)    }
+sub isOspf   { shift->_isL4(NP_LAYER_OSPF)   }
+sub isIgmpv4 { shift->_isL4(NP_LAYER_IGMPv4) }
 sub is7      { shift->_isL7(NP_LAYER_7)      }
 sub isIp     { my $self = shift; $self->isIpv4 || $self->isIpv6 }
 sub isIcmp   { my $self = shift; $self->isIcmpv4 } # XXX: || v6
@@ -703,6 +760,8 @@ Just returns a string in hexadecimal format which is how the layer appears on th
 
 =item B<isSll>
 
+=item B<isPpp>
+
 =item B<isArp>
 
 =item B<isIpv4>
@@ -711,11 +770,11 @@ Just returns a string in hexadecimal format which is how the layer appears on th
 
 =item B<isIp> - either IPv4 or IPv6
 
+=item B<isPpplcp>
+
 =item B<isVlan>
 
 =item B<isPppoe>
-
-=item B<isPpp>
 
 =item B<isLlc>
 
@@ -727,9 +786,13 @@ Just returns a string in hexadecimal format which is how the layer appears on th
 
 =item B<isIcmp> - currently only ICMPv4
 
-=item B<isPpplcp>
-
 =item B<isCdp>
+
+=item B<isStp>
+
+=item B<isOspf>
+
+=item B<isIgmpv4>
 
 =item B<is7>
 

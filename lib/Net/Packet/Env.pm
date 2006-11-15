@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.2.2.18 2006/11/12 16:50:18 gomor Exp $
+# $Id: Env.pm,v 1.2.2.19 2006/11/15 19:33:03 gomor Exp $
 #
 package Net::Packet::Env;
 use strict;
@@ -295,11 +295,13 @@ By default, when a B<Net::Packet::Frame> object is created from analyzing a raw 
 
 =item B<noFrameComputeLengths>
 
-By default, when a B<Net::Packet::Frame> object is packed, all layers checksums and lengths are computed. If you want to do it yourself, set this to true. See B<doIPv4Checksum> for the exception.
+By default, when a B<Net::Packet::Frame> object is packed, all layers checksums and lengths are computed (if respective layers implement that). If you want to do it yourself, set this to true. See B<doIPv4Checksum> for the exception.
 
 =item B<doIPv4Checksum>
 
 This parameter exists to improve performances of the framework. When you send an IPv4 frame at layer 3 (using a B<Net::Packet::DescL3> object), under Unix systems, you MUST not compute IPv4 checksum. The kernel does it. Because this is the more general case (sending IPv4 at layer 3), this parameter is set to false by default. Note: under Windows, because B<Net::Packet::DescL3> is a wrapper around B<Net::Packet::DescL2>, this parameter will be set to true on B<Net::Packet::DescL3> object creation.
+
+So, even if you let the framework compute checksums, IPv4 checksum will not be computed. If you want to send IPv4 frames at layer 2, you will need to also set this parameter to true.
 
 =item B<doMemoryOptimizations>
 

@@ -1,7 +1,7 @@
 #
-# $Id: TypeDeviceId.pm,v 1.1.2.4 2006/11/14 19:20:11 gomor Exp $
+# $Id: TypeCapabilities.pm,v 1.1.2.1 2006/11/14 19:22:39 gomor Exp $
 #
-package Net::Packet::CDP::TypeDeviceId;
+package Net::Packet::CDP::TypeCapabilities;
 use strict;
 use warnings;
 
@@ -11,7 +11,7 @@ our @ISA = qw(Net::Packet::CDP::Type);
 use Net::Packet::Consts qw(:cdp);
 
 our @AS = qw(
-   deviceId
+   capabilities
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
@@ -20,9 +20,9 @@ __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 sub new {
    shift->SUPER::new(
-      type     => NP_CDP_TYPE_DEVICE_ID,
-      length   => 8,
-      deviceId => 'GGGG',
+      type         => NP_CDP_TYPE_CAPABILITIES,
+      length       => 8,
+      capabilities => 0x00000000,
       @_,
    );
 }
@@ -30,10 +30,10 @@ sub new {
 sub pack {
    my $self = shift;
 
-   $self->raw($self->SUPER::pack('nna*',
+   $self->raw($self->SUPER::pack('nnN',
       $self->type,
       $self->length,
-      $self->deviceId,
+      $self->capabilities,
    )) or return undef;
 
    1;
@@ -42,18 +42,14 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($type, $length, $tail) = $self->SUPER::unpack('nna*', $self->raw)
-      or return undef;
+   my ($type, $length, $capabilities, $payload) =
+      $self->SUPER::unpack('nnN a*', $self->raw)
+         or return undef;
 
    $self->type($type);
    $self->length($length);
+   $self->capabilities($capabilities);
 
-   my $deviceIdLen = $length - 4;
-
-   my ($deviceId, $payload) = $self->SUPER::unpack("a$deviceIdLen a*", $tail)
-      or return undef;
-
-   $self->deviceId($deviceId);
    $self->payload($payload);
 
    1;
@@ -64,9 +60,8 @@ sub print {
 
    my $i = $self->is;
    my $l = $self->layer;
-   sprintf "$l: $i: type:0x%04x  length:%d\n".
-           "$l: $i: deviceId:%s",
-      $self->type, $self->length, $self->deviceId;
+   sprintf "$l: $i: type:0x%04x  length:%d  capabilities:0x%08x",
+      $self->type, $self->length, $self->capabilities;
 }
 
 1;
@@ -75,25 +70,25 @@ __END__
 
 =head1 NAME
 
-Net::Packet::CDP::TypeDeviceId - Cisco Discovery Protocol Device ID extension header
+Net::Packet::CDP::TypeCapabilities - Cisco Discovery Protocol Capabilities extension header
 
 =head1 SYNOPSIS
 
    use Net::Packet::Consts qw(:cdp);
-   require Net::Packet::CDP::TypeDeviceId;
+   require Net::Packet::CDP::TypeCapabilities;
 
    # Build a layer
-   my $layer = Net::Packet::CDP::TypeDeviceId->new(
-      type     => NP_CDP_TYPE_DEVICE_ID,
-      length   => 8,
-      deviceId => 'GGGG',
+   my $layer = Net::Packet::CDP::TypeCapabilities->new(
+      type         => NP_CDP_TYPE_CAPABILITIES,
+      length       => 8,
+      capabilities => 0x00000000,
    );
    $layer->pack;
 
    print 'RAW: '.unpack('H*', $layer->raw)."\n";
 
    # Read a raw layer
-   my $layer = Net::Packet::CDP::TypeDeviceId->new(raw => $raw);
+   my $layer = Net::Packet::CDP::TypeCapabilities->new(raw => $raw);
 
    print $layer->print."\n";
    print 'PAYLOAD: '.unpack('H*', $layer->payload)."\n"
@@ -101,7 +96,7 @@ Net::Packet::CDP::TypeDeviceId - Cisco Discovery Protocol Device ID extension he
 
 =head1 DESCRIPTION
 
-This modules implements the encoding and decoding of the Cisco Discovery Protocol Device ID type extension header.
+This modules implements the encoding and decoding of the Cisco Discovery Protocol Capabilities type extension header.
 
 =head1 ATTRIBUTES
 
@@ -111,7 +106,7 @@ This modules implements the encoding and decoding of the Cisco Discovery Protoco
 
 =item B<length> - 16 bits
 
-=item B<deviceId> - variable length
+=item B<capabilities> - 32 bits
 
 =back
 
@@ -123,11 +118,11 @@ This modules implements the encoding and decoding of the Cisco Discovery Protoco
 
 Object constructor. You can pass attributes that will overwrite default ones. Default values:
 
-type:     NP_CDP_TYPE_DEVICE_ID
+type:         NP_CDP_TYPE_CAPABILITIES
 
-length:   8
+length:       8
 
-deviceId: 'GGGG'
+capabilities: 0x00000000
 
 =item B<pack>
 

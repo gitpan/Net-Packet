@@ -13,6 +13,21 @@ use Net::Packet::SLL;
 use Net::Packet::TCP;
 use Net::Packet::UDP;
 use Net::Packet::VLAN;
+use Net::Packet::PPPoE;
+use Net::Packet::PPP;
+use Net::Packet::PPPLCP;
+use Net::Packet::LLC;
+use Net::Packet::CDP;
+use Net::Packet::CDP::Address;
+use Net::Packet::CDP::Type;
+use Net::Packet::CDP::TypeDeviceId;
+use Net::Packet::CDP::TypeAddresses;
+use Net::Packet::CDP::TypePortId;
+use Net::Packet::CDP::TypeCapabilities;
+use Net::Packet::CDP::TypeSoftwareVersion;
+use Net::Packet::STP;
+use Net::Packet::OSPF;
+use Net::Packet::IGMPv4;
 
 my $f = Net::Packet::Frame->new;
 $f->pack;
@@ -67,5 +82,29 @@ $cdp->pack;
 
 my $cdpType1 = Net::Packet::CDP::TypeDeviceId->new;
 $cdpType1->pack;
+
+my $cdpAddress = Net::Packet::CDP::Address->new;
+$cdpAddress->pack;
+
+my $cdpType2 = Net::Packet::CDP::TypeAddresses->new;
+$cdpType2->pack;
+
+my $cdpType3 = Net::Packet::CDP::TypePortId->new;
+$cdpType3->pack;
+
+my $cdpType4 = Net::Packet::CDP::TypeCapabilities->new;
+$cdpType4->pack;
+
+my $cdpType5 = Net::Packet::CDP::TypeSoftwareVersion->new;
+$cdpType5->pack;
+
+my $stp = Net::Packet::STP->new;
+$stp->pack;
+
+my $ospf = Net::Packet::OSPF->new;
+$ospf->pack;
+
+my $igmp = Net::Packet::IGMPv4->new;
+$igmp->pack;
 
 ok(1);

@@ -1,5 +1,5 @@
 #
-# $Id: UDP.pm,v 1.3.2.5 2006/11/12 20:28:34 gomor Exp $
+# $Id: UDP.pm,v 1.3.2.6 2006/11/15 19:35:47 gomor Exp $
 #
 package Net::Packet::UDP;
 use strict;
@@ -100,9 +100,6 @@ sub getPayloadLength {
 sub _computeTotalLength {
    my $self = shift;
    my ($l7) = @_;
-
-   # Autocompute header length if not user specified
-   return if $self->[$__length];
 
    my $totalLength = $self->getLength;
    $totalLength += $l7->getLength if $l7;

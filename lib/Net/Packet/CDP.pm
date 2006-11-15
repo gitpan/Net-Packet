@@ -1,5 +1,5 @@
 #
-# $Id: CDP.pm,v 1.1.2.1 2006/11/12 18:11:56 gomor Exp $
+# $Id: CDP.pm,v 1.1.2.2 2006/11/14 19:13:31 gomor Exp $
 #
 package Net::Packet::CDP;
 use strict;
@@ -9,19 +9,26 @@ require Net::Packet::Layer4;
 our @ISA = qw(Net::Packet::Layer4);
 
 use Net::Packet::Consts qw(:cdp :layer);
+require Net::Packet::CDP::TypeDeviceId;
+require Net::Packet::CDP::TypeAddresses;
+require Net::Packet::CDP::TypePortId;
+require Net::Packet::CDP::TypeCapabilities;
+require Net::Packet::CDP::TypeSoftwareVersion;
 
 our @AS = qw(
    version
    ttl
    checksum
    typeDeviceId
+   typeAddresses
+   typePortId
+   typeCapabilities
+   typeSoftwareVersion
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 no strict 'vars';
-
-require Net::Packet::CDP::TypeDeviceId;
 
 sub new {
    shift->SUPER::new(
@@ -44,7 +51,24 @@ sub pack {
    ) or return undef;
 
    if ($self->[$__typeDeviceId]) {
-      $self->[$__raw] .= $self->[$__typeDeviceId]->pack or return undef;
+      $self->[$__raw] .= $self->[$__typeDeviceId]->pack
+         or return undef;
+   }
+   if ($self->[$__typeAddresses]) {
+      $self->[$__raw] .= $self->[$__typeAddresses]->pack
+         or return undef;
+   }
+   if ($self->[$__typePortId]) {
+      $self->[$__raw] .= $self->[$__typePortId]->pack
+         or return undef;
+   }
+   if ($self->[$__typeCapabilities]) {
+      $self->[$__raw] .= $self->[$__typeCapabilities]->pack
+         or return undef;
+   }
+   if ($self->[$__typeSoftwareVersion]) {
+      $self->[$__raw] .= $self->[$__typeSoftwareVersion]->pack
+         or return undef;
    }
 
    1;
@@ -54,7 +78,8 @@ sub unpack {
    my $self = shift;
 
    my ($version, $ttl, $checksum, $payload) =
-      $self->SUPER::unpack('CCn a*', $self->[$__raw]);
+      $self->SUPER::unpack('CCn a*', $self->[$__raw])
+         or return undef;
 
    $self->[$__version]  = $version;
    $self->[$__ttl]      = $ttl;
@@ -63,9 +88,33 @@ sub unpack {
    my $tail = CORE::unpack('H*', $payload);
 
    if ($tail =~ /^0001/) {
-      my $typeDeviceId = Net::Packet::CDP::TypeDeviceId->new(raw => $payload);
-      $self->[$__typeDeviceId] = $typeDeviceId;
-      $payload = $typeDeviceId->payload;
+      my $type = Net::Packet::CDP::TypeDeviceId->new(raw => $payload);
+      $self->[$__typeDeviceId] = $type;
+      $payload = $type->payload;
+      $tail    = CORE::unpack('H*', $payload);
+   }
+   if ($tail =~ /^0002/) {
+      my $type = Net::Packet::CDP::TypeAddresses->new(raw => $payload);
+      $self->[$__typeAddresses] = $type;
+      $payload = $type->payload;
+      $tail    = CORE::unpack('H*', $payload);
+   }
+   if ($tail =~ /^0003/) {
+      my $type = Net::Packet::CDP::TypePortId->new(raw => $payload);
+      $self->[$__typePortId] = $type;
+      $payload = $type->payload;
+      $tail    = CORE::unpack('H*', $payload);
+   }
+   if ($tail =~ /^0004/) {
+      my $type = Net::Packet::CDP::TypeCapabilities->new(raw => $payload);
+      $self->[$__typeCapabilities] = $type;
+      $payload = $type->payload;
+      $tail    = CORE::unpack('H*', $payload);
+   }
+   if ($tail =~ /^0005/) {
+      my $type = Net::Packet::CDP::TypeSoftwareVersion->new(raw => $payload);
+      $self->[$__typeSoftwareVersion] = $type;
+      $payload = $type->payload;
       $tail    = CORE::unpack('H*', $payload);
    }
 
@@ -89,11 +138,23 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   $buf .= sprintf "$l:+$i: version:0x%02x  ttl:0x%02x  checksum:0x%04x\n",
+   $buf .= sprintf "$l:+$i: version:%d  ttl:%d  checksum:0x%04x",
       $self->[$__version], $self->[$__ttl], $self->[$__checksum];
 
    if ($self->[$__typeDeviceId]) {
-      $buf .= $self->[$__typeDeviceId]->print;
+      $buf .= "\n".$self->[$__typeDeviceId]->print;
+   }
+   if ($self->[$__typeAddresses]) {
+      $buf .= "\n".$self->[$__typeAddresses]->print;
+   }
+   if ($self->[$__typePortId]) {
+      $buf .= "\n".$self->[$__typePortId]->print;
+   }
+   if ($self->[$__typeCapabilities]) {
+      $buf .= "\n".$self->[$__typeCapabilities]->print;
+   }
+   if ($self->[$__typeSoftwareVersion]) {
+      $buf .= "\n".$self->[$__typeSoftwareVersion]->print;
    }
 
    $buf;
@@ -145,6 +206,18 @@ See also B<Net::Packet::Layer> and B<Net::Packet::Layer4> for other attributes a
 
 =item B<checksum> - 16 bits
 
+=item B<typeDeviceId>
+
+=item B<typeAddresses>
+
+=item B<typePortId>
+
+=item B<typeCapabilities>
+
+=item B<typeSoftwareVersion>
+
+All these type attributes keep a pointer to the respective object. That is, for typeDeviceId, you have a pointer to a B<Net::Packet::CDP::TypeDeviceId> object, if applicable.
+
 =back
 
 =head1 METHODS
@@ -184,6 +257,8 @@ CDP header length.
 =item B<NP_CDP_TYPE_DEVICE_ID>
 
 =item B<NP_CDP_TYPE_ADDRESSES>
+
+=item B<NP_CDP_TYPE_PORT_ID>
 
 =item B<NP_CDP_TYPE_CAPABILITIES>
 

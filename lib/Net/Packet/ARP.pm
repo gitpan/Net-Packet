@@ -1,5 +1,5 @@
 #
-# $Id: ARP.pm,v 1.3.2.8 2006/11/12 20:28:34 gomor Exp $
+# $Id: ARP.pm,v 1.3.2.9 2006/11/13 18:44:51 gomor Exp $
 #
 package Net::Packet::ARP;
 use strict;
@@ -125,7 +125,7 @@ sub print {
       "$l:+$i: hType:0x%04x  pType:0x%04x  hSize:0x%02x  pSize:0x%02x".
       "  opCode:0x%04x\n".
       "$l: $i: src:%s  srcIp:%s\n".
-      "$l: $i: dst:%s  dstIp:%s".
+      "$l: $i: dst:%s  dstIp:%s",
          $self->[$__hType], $self->[$__pType], $self->[$__hSize],
          $self->[$__pSize], $self->[$__opCode], $self->[$__src],
          $self->[$__srcIp], $self->[$__dst],  $self->[$__dstIp];

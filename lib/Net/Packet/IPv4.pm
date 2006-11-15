@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.3.2.10 2006/11/12 20:28:34 gomor Exp $
+# $Id: IPv4.pm,v 1.3.2.12 2006/11/15 19:35:01 gomor Exp $
 #
 package Net::Packet::IPv4;
 use strict;
@@ -51,8 +51,8 @@ sub new {
       version  => 4,
       tos      => 0,
       id       => getRandom16bitsInt(),
-      length   => 0,
-      hlen     => 0,
+      length   => NP_IPv4_HDR_LEN,
+      hlen     => 5,
       flags    => 0,
       offset   => 0,
       ttl      => 128,
@@ -61,7 +61,7 @@ sub new {
       src      => $Env->ip,
       dst      => '127.0.0.1',
       options  => '',
-      noFixLen   => 0,
+      noFixLen => 0,
       @_,
    );
 }
@@ -193,6 +193,8 @@ sub encapsulate {
       NP_IPv4_PROTOCOL_UDP()    => NP_LAYER_UDP(),
       NP_IPv4_PROTOCOL_ICMPv4() => NP_LAYER_ICMPv4(),
       NP_IPv4_PROTOCOL_IPv6()   => NP_LAYER_IPv6(),
+      NP_IPv4_PROTOCOL_OSPF()   => NP_LAYER_OSPF(),
+      NP_IPv4_PROTOCOL_IGMPv4() => NP_LAYER_IGMPv4(),
    };
 
    $types->{shift->protocol} || NP_LAYER_UNKNOWN();
@@ -233,9 +235,9 @@ sub print {
          $self->[$__dst];
 
    if ($self->[$__options]) {
-      $buf .= sprintf "$l: $i: optionsLength:%d  options:%s",
+      $buf .= sprintf "\n$l: $i: optionsLength:%d  options:%s",
          $self->getOptionsLength,
-         $self->[$__options];
+         CORE::unpack('H*', $self->[$__options]);
    }
 
    $buf;
@@ -254,6 +256,8 @@ sub _isProtocol      { shift->protocol == shift()                  }
 sub isProtocolTcp    { shift->_isProtocol(NP_IPv4_PROTOCOL_TCP)    }
 sub isProtocolUdp    { shift->_isProtocol(NP_IPv4_PROTOCOL_UDP)    }
 sub isProtocolIcmpv4 { shift->_isProtocol(NP_IPv4_PROTOCOL_ICMPv4) }
+sub isProtocolIpv6   { shift->_isProtocol(NP_IPv4_PROTOCOL_IPv6)   }
+sub isProtocolOspf   { shift->_isProtocol(NP_IPv4_PROTOCOL_OSPF)   }
 
 1;
 
@@ -366,9 +370,9 @@ tos:      0
 
 id:       getRandom16bitsInt()
 
-length:   0
+length:   NP_IPv4_HDR_LEN
 
-hlen:     0
+hlen:     5
 
 flags:    0
 
@@ -421,6 +425,10 @@ Returns 1 if the specified flag is set in B<flags> attribute, 0 otherwise.
 
 =item B<isProtocolUdp>
 
+=item B<isProtocolIpv6>
+
+=item B<isProtocolOspf>
+
 =item B<isProtocolIcmpv4>
 
 Returns 1 if the specified protocol is used at layer 4, 0 otherwise.
@@ -440,6 +448,8 @@ Load them: use Net::Packet::Consts qw(:ipv4);
 =item B<NP_IPv4_PROTOCOL_ICMPv4>
 
 =item B<NP_IPv4_PROTOCOL_IPv6>
+
+=item B<NP_IPv4_PROTOCOL_OSPF>
 
 Various protocol type constants.
 

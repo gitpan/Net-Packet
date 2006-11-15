@@ -1,17 +1,19 @@
 #
-# $Id: PPP.pm,v 1.1.2.2 2006/11/12 16:54:57 gomor Exp $
+# $Id: PPP.pm,v 1.1.2.3 2006/11/14 19:17:51 gomor Exp $
 #
 package Net::Packet::PPP;
 use strict;
 use warnings;
 
-require Net::Packet::Layer3;
-our @ISA = qw(Net::Packet::Layer3);
+require Net::Packet::Layer2;
+our @ISA = qw(Net::Packet::Layer2);
 
 use Net::Packet::Consts qw(:ppp :layer);
 require Bit::Vector;
 
 our @AS = qw(
+   address
+   control
    protocol
 );
 __PACKAGE__->cgBuildIndices;
@@ -21,6 +23,8 @@ no strict 'vars';
 
 sub new {
    shift->SUPER::new(
+      address  => 0xff,
+      control  => 0x03,
       protocol => NP_PPP_PROTOCOL_IPv4,
       @_,
    );
@@ -31,8 +35,9 @@ sub getLength { NP_PPP_HDR_LEN }
 sub pack {
    my $self = shift;
 
-   $self->[$__raw] = $self->SUPER::pack('n', $self->[$__protocol])
-      or return undef;
+   $self->[$__raw] = $self->SUPER::pack('CCn', $self->[$__address],
+      $self->[$__control], $self->[$__protocol])
+         or return undef;
 
    1;
 }
@@ -40,8 +45,12 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($protocol, $payload) = $self->SUPER::unpack('n a*', $self->[$__raw]);
+   my ($address, $control, $protocol, $payload) =
+      $self->SUPER::unpack('CCn a*', $self->[$__raw])
+         or return undef;
 
+   $self->[$__address]  = $address;
+   $self->[$__control]  = $control;
    $self->[$__protocol] = $protocol;
    $self->[$__payload]  = $payload;
 
@@ -62,7 +71,8 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: protocol:0x%04x", $self->[$__protocol];
+   sprintf "$l:+$i: address:0x%02x  control:0x%02x  protocol:0x%04x",
+      $self->[$__address], $self->[$__control], $self->[$__protocol];
 }
 
 #
@@ -79,7 +89,7 @@ __END__
 
 =head1 NAME
 
-Net::Packet::PPP - Point-to-Point Protocol layer 3 object
+Net::Packet::PPP - Point-to-Point Protocol layer 2 object
 
 =head1 SYNOPSIS
 
@@ -105,7 +115,7 @@ Net::Packet::PPP - Point-to-Point Protocol layer 3 object
 
 This modules implements the encoding and decoding of the Point-to-Point Protocol layer.
 
-See also B<Net::Packet::Layer> and B<Net::Packet::Layer3> for other attributes and methods.
+See also B<Net::Packet::Layer> and B<Net::Packet::Layer2> for other attributes and methods.
 
 =head1 ATTRIBUTES
 

@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.2.2.13 2006/11/12 19:15:04 gomor Exp $
+# $Id: Packet.pm,v 1.2.2.16 2006/11/15 19:27:49 gomor Exp $
 #
 package Net::Packet;
 use strict;
@@ -7,7 +7,7 @@ use warnings;
 
 require v5.6.1;
 
-our $VERSION = '3.20';
+our $VERSION = '3.21';
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -36,25 +36,23 @@ require Net::Packet::NULL;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
 require Net::Packet::CDP;
+require Net::Packet::CDP::Address;
 require Net::Packet::CDP::TypeDeviceId;
+require Net::Packet::CDP::TypeAddresses;
+require Net::Packet::CDP::TypeCapabilities;
+require Net::Packet::CDP::TypePortId;
+require Net::Packet::CDP::TypeSoftwareVersion;
 require Net::Packet::LLC;
 require Net::Packet::PPPLCP;
 require Net::Packet::PPPoE;
 require Net::Packet::PPP;
+require Net::Packet::STP;
 
 our @EXPORT = (
    @Net::Packet::Env::EXPORT_OK,
    @Net::Packet::Utils::EXPORT_OK,
    @Net::Packet::Consts::EXPORT_OK,
 );
-
-END {
-   if ($Env->dump) {
-      $Env->dump->stop if $Env->dump->isRunning;
-      $Env->dump->clean;
-   }
-   1;
-}
 
 1;
 
@@ -170,6 +168,8 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      +---Net::Packet::RAW
      |      |
      |      +---Net::Packet::SLL
+     |      |
+     |      +---Net::Packet::PPP
      |
      +---Net::Packet::Layer3
      |      |
@@ -183,7 +183,7 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      |
      |      +---Net::Packet::PPPoE
      |      |
-     |      +---Net::Packet::PPP
+     |      +---Net::Packet::PPPLCP
      |      |
      |      +---Net::Packet::LLC
      |
@@ -195,9 +195,13 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
      |      |
      |      +---Net::Packet::ICMPv4
      |      |
-     |      +---Net::Packet::PPPLCP
-     |      |
      |      +---Net::Packet::CDP
+     |      |
+     |      +---Net::Packet::STP
+     |      |
+     |      +---Net::Packet::OSPF
+     |      |
+     |      +---Net::Packet::IGMPv4
      |
      +---Net::Packet::Layer7
 

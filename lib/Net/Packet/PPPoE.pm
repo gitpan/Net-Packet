@@ -1,5 +1,5 @@
 #
-# $Id: PPPoE.pm,v 1.1.2.2 2006/11/12 16:53:22 gomor Exp $
+# $Id: PPPoE.pm,v 1.1.2.3 2006/11/14 19:19:16 gomor Exp $
 #
 package Net::Packet::PPPoE;
 use strict;
@@ -17,6 +17,7 @@ our @AS = qw(
    code
    sessionId
    payloadLength
+   pppProtocol
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
@@ -30,6 +31,7 @@ sub new {
       code          => 0,
       sessionId     => 1,
       payloadLength => 0,
+      pppProtocol   => NP_PPPoE_PPP_PROTOCOL_IPv4,
       @_,
    );
 }
@@ -45,11 +47,12 @@ sub pack {
    my $type    = Bit::Vector->new_Dec(4, $self->[$__type]);
    my $v8      = $version->Concat_List($type);
 
-   $self->[$__raw] = $self->SUPER::pack('CCnn',
+   $self->[$__raw] = $self->SUPER::pack('CCnnn',
       $v8->to_Dec,
       $self->[$__code],
       $self->[$__sessionId],
       $self->[$__payloadLength],
+      $self->[$__pppProtocol],
    ) or return undef;
 
    1;
@@ -58,8 +61,9 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($versionType, $code, $sessionId, $payloadLength, $payload) =
-      $self->SUPER::unpack('CCnn a*', $self->[$__raw]);
+   my ($versionType, $code, $sessionId, $payloadLength, $pppProtocol,
+      $payload) = $self->SUPER::unpack('CCnnn a*', $self->[$__raw])
+         or return undef;
 
    my $v8 = Bit::Vector->new_Dec(8, $versionType);
    $self->version($v8->Chunk_Read(4, 0));
@@ -68,6 +72,7 @@ sub unpack {
    $self->[$__code]          = $code;
    $self->[$__sessionId]     = $sessionId;
    $self->[$__payloadLength] = $payloadLength;
+   $self->[$__pppProtocol]   = $pppProtocol;
    $self->[$__payload]       = $payload;
 
    1;
@@ -75,10 +80,11 @@ sub unpack {
 
 sub encapsulate {
    my $types = {
-      NP_LAYER_PPP() => NP_LAYER_PPP(),
+      NP_PPPoE_PPP_PROTOCOL_IPv4()   => NP_LAYER_IPv4(),
+      NP_PPPoE_PPP_PROTOCOL_PPPLCP() => NP_LAYER_PPPLCP(),
    };
 
-   $types->{NP_LAYER_PPP()} || NP_LAYER_UNKNOWN();
+   $types->{shift->[$__pppProtocol]} || NP_LAYER_UNKNOWN();
 }
 
 sub print {
@@ -87,9 +93,9 @@ sub print {
    my $l = $self->layer;
    my $i = $self->is;
    sprintf "$l:+$i: version:%d  type:%d  code:0x%02x  sessionId:0x%04x\n".
-           "$l: $i: payloadLength:%d",
+           "$l: $i: payloadLength:%d  pppProtocol:0x%04x",
       $self->[$__version], $self->[$__type], $self->[$__code],
-      $self->[$__sessionId], $self->[$__payloadLength];
+      $self->[$__sessionId], $self->[$__payloadLength], $self->[$__pppProtocol];
 }
 
 1;
@@ -112,6 +118,7 @@ Net::Packet::PPPoE - PPP-over-Ethernet layer 3 object
       code          => 0,
       sessionId     => 1,
       payloadLength => 0,
+      pppProtocol   => NP_PPPoE_PPP_PROTOCOL_IPv4,
    );
    $layer->pack;
 
@@ -144,6 +151,10 @@ See also B<Net::Packet::Layer> and B<Net::Packet::Layer3> for other attributes a
 
 =item B<payloadLength> - 16 bits
 
+=item B<pppProtocol> - 16 bits
+
+For this last attribute, we can note that it is included in the computation of payloadLength.
+
 =back
 
 =head1 METHODS
@@ -164,6 +175,8 @@ sessionId:     1
 
 payloadLength: 0
 
+pppProtocol:   NP_PPPoE_PPP_PROTOCOL_IPv4
+
 =item B<pack>
 
 Packs all attributes into a raw format, in order to inject to network. Returns 1 on success, undef otherwise.
@@ -183,6 +196,12 @@ Load them: use Net::Packet::Consts qw(:pppoe);
 =item B<NP_PPPoE_HDR_LEN>
 
 PPPoE header length.
+
+=item B<NP_PPPoE_PPP_PROTOCOL_IPv4>
+
+=item B<NP_PPPoE_PPP_PROTOCOL_PPPLCP>
+
+Various supported encapsulated PPP protocols.
 
 =back
 
