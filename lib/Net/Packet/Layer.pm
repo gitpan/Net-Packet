@@ -1,5 +1,5 @@
 #
-# $Id: Layer.pm,v 1.3.2.5 2006/11/12 20:28:34 gomor Exp $
+# $Id: Layer.pm,v 1.3.2.6 2006/11/18 13:01:18 gomor Exp $
 #
 package Net::Packet::Layer;
 use strict;
@@ -136,6 +136,20 @@ Just returns a string in a human readable format describing attributes found in 
 =item B<dump>
 
 Just returns a string in hexadecimal format which is how the layer appears on the network.
+
+=item B<getKey>
+
+=item B<getKeyReverse>
+
+These methods are used to respectively store and retrieve analyzed frames respectively to and from a hashref. This is to make it quick to get possible responses from a probe.
+
+=item B<pack>
+
+Will pack all attributes into raw network format. This method MUST be implemented into each supported layers.
+
+=item B<unpack>
+
+Will unpack raw network format to respective attributes. This method MUST be implemented into each supported layers.
 
 =item B<getLength>
 

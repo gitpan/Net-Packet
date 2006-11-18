@@ -1,10 +1,11 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Net-Packet
-version:      3.21
-version_from: lib/Net/Packet.pm
-installdirs:  site
-requires:
+--- #YAML:1.0
+name:                Net-Packet
+version:             3.22
+abstract:            a framework to easily send and receive frames from layer 2 to layer 7
+license:             Artistic
+generated_by:        ExtUtils::MakeMaker version 6.31
+distribution_type:   module
+requires:     
     Bit::Vector:                   0
     Class::Gomor:                  1.00
     Net::IPv6Addr:                 0
@@ -14,6 +15,8 @@ requires:
     Socket6:                       0
     Storable:                      0
     Time::HiRes:                   0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
+    version: 1.2
+author:
+    - GomoR <perl@gomor.org>

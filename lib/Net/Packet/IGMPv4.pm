@@ -1,5 +1,5 @@
 #
-# $Id: IGMPv4.pm,v 1.1.2.1 2006/11/15 19:50:03 gomor Exp $
+# $Id: IGMPv4.pm,v 1.1.2.2 2006/11/18 12:50:35 gomor Exp $
 #
 package Net::Packet::IGMPv4;
 use strict;
@@ -122,7 +122,7 @@ __END__
 
 =head1 NAME
 
-Net::Packet::IGMPv4 - Internet Group Management Protocol layer 4 object
+Net::Packet::IGMPv4 - Internet Group Management Protocol v4 layer 4 object
 
 =head1 SYNOPSIS
 
@@ -150,7 +150,7 @@ Net::Packet::IGMPv4 - Internet Group Management Protocol layer 4 object
 
 =head1 DESCRIPTION
 
-This modules implements the encoding and decoding of the Internet Group Management Protocol (version 1 and 2) layer.
+This modules implements the encoding and decoding of the Internet Group Management Protocol v4 (version 1 and 2) layer.
 
 RFC for version 1: ftp://ftp.rfc-editor.org/in-notes/rfc1112.txt
 

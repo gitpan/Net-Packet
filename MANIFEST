@@ -68,6 +68,8 @@ MANIFEST
 META.yml
 README
 t/01-layer-create.t
+t/01-pod-coverage.t
+t/01-test-pod.t
 t/01-use-packet.t
 t/02-d3-lo-tcp.t
 t/03-d3-lo-icmp-echo.t

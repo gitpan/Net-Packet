@@ -1,5 +1,5 @@
 #
-# $Id: Address.pm,v 1.1.2.1 2006/11/14 19:22:39 gomor Exp $
+# $Id: Address.pm,v 1.1.2.2 2006/11/18 14:43:44 gomor Exp $
 #
 package Net::Packet::CDP::Address;
 use strict;
@@ -169,6 +169,8 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 
 =head1 CONSTANTS
 
+=over 4
+
 =item B<NP_CDP_ADDRESS_PROTOCOL_TYPE_NLPID>
 
 =item B<NP_CDP_ADDRESS_PROTOCOL_LENGTH_NLPID>
@@ -178,8 +180,6 @@ Unpacks raw data from network and stores attributes into the object. Returns 1 o
 =item B<NP_CDP_ADDRESS_ADDRESS_LENGTH_IP>
 
 See also B<Net::Packet::CDP> for other CONSTANTS.
-
-=over 4
 
 =back
 

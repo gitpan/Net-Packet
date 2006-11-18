@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: vlan-craft.pl,v 1.2.2.1 2006/06/04 13:23:13 gomor Exp $
+# $Id: vlan-craft.pl,v 1.2.2.2 2006/11/18 14:43:31 gomor Exp $
 #
 use strict;
 use warnings;
@@ -14,6 +14,7 @@ die("Usage: $0 -I srcIp -i dstIp -m dstMac\n")
 
 use Net::Packet;
 
+$Env->doIPv4Checksum(1);
 $Env->debug(3);
 
 Net::Packet::DescL2->new;
@@ -29,10 +30,8 @@ my $echo = Net::Packet::Frame->new(
       src      => $opts{I},
       dst      => $opts{i},
       protocol => NP_IPv4_PROTOCOL_ICMPv4,
-      doChecksum => 1, # Because system will not do it,
-                       # at least under FreeBSD
-      noFixLen   => 1, # Well, FreeBSD needs fixing, but not
-                       # when frames are injected into VLANs ;)
+      noFixLen => 1, # Well, FreeBSD needs fixing, but not
+                     # when frames are injected into VLANs ;)
     ),
     l4 => Net::Packet::ICMPv4->new,
 );

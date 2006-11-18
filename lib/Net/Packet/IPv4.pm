@@ -1,5 +1,5 @@
 #
-# $Id: IPv4.pm,v 1.3.2.12 2006/11/15 19:35:01 gomor Exp $
+# $Id: IPv4.pm,v 1.3.2.13 2006/11/18 12:51:16 gomor Exp $
 #
 package Net::Packet::IPv4;
 use strict;
@@ -258,6 +258,7 @@ sub isProtocolUdp    { shift->_isProtocol(NP_IPv4_PROTOCOL_UDP)    }
 sub isProtocolIcmpv4 { shift->_isProtocol(NP_IPv4_PROTOCOL_ICMPv4) }
 sub isProtocolIpv6   { shift->_isProtocol(NP_IPv4_PROTOCOL_IPv6)   }
 sub isProtocolOspf   { shift->_isProtocol(NP_IPv4_PROTOCOL_OSPF)   }
+sub isProtocolIgmpv4 { shift->_isProtocol(NP_IPv4_PROTOCOL_IGMPv4) }
 
 1;
 
@@ -429,6 +430,8 @@ Returns 1 if the specified flag is set in B<flags> attribute, 0 otherwise.
 
 =item B<isProtocolOspf>
 
+=item B<isProtocolIgmpv4>
+
 =item B<isProtocolIcmpv4>
 
 Returns 1 if the specified protocol is used at layer 4, 0 otherwise.
@@ -450,6 +453,8 @@ Load them: use Net::Packet::Consts qw(:ipv4);
 =item B<NP_IPv4_PROTOCOL_IPv6>
 
 =item B<NP_IPv4_PROTOCOL_OSPF>
+
+=item B<NP_IPv4_PROTOCOL_IGMPv4>
 
 Various protocol type constants.
 

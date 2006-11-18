@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.PL,v 1.3.2.5 2006/10/29 13:31:13 gomor Exp $
+# $Id: Makefile.PL,v 1.3.2.6 2006/11/18 12:49:06 gomor Exp $
 #
 use ExtUtils::MakeMaker;
 
@@ -9,6 +9,7 @@ die("*** Big endian architectures not supported yet\n")
 WriteMakefile(
    NAME          => 'Net::Packet',
    VERSION_FROM  => 'lib/Net/Packet.pm',
+   LICENSE       => 'Artistic',
    PREREQ_PM     => {
       Class::Gomor  => '1.00',
       Net::Pcap     => '0.12',

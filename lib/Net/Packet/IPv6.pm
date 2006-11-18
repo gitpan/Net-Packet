@@ -1,5 +1,5 @@
 #
-# $Id: IPv6.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
+# $Id: IPv6.pm,v 1.3.2.10 2006/11/18 13:00:56 gomor Exp $
 #
 package Net::Packet::IPv6;
 use strict;
@@ -186,6 +186,10 @@ Flow label class field. Was IP ID in IPv4.
 =item B<nextHeader>
 
 The type of next header. Was protocol in IPv4.
+
+=item B<protocol>
+
+Is an alias for B<nextHeader>
 
 =item B<payloadLength>
 

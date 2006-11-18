@@ -1,5 +1,5 @@
 #
-# $Id: ETH.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
+# $Id: ETH.pm,v 1.3.2.10 2006/11/18 12:50:19 gomor Exp $
 #
 package Net::Packet::ETH;
 use strict;
@@ -99,8 +99,17 @@ sub print {
 
    my $l = $self->layer;
    my $i = $self->is;
-   sprintf "$l:+$i: dst:%s  src:%s  type:0x%04x",
-      $self->[$__dst], $self->[$__src], $self->[$__type];
+   my $buf = '';
+   $buf .= sprintf "$l:+$i: dst:%s  src:%s  ", $self->[$__dst], $self->[$__src];
+
+   if ($self->[$__type] <= 1500) {
+      $buf .= sprintf "length:%d", $self->[$__type];
+   }
+   else {
+      $buf .= sprintf "type:0x%04x", $self->[$__type];
+   }
+
+   $buf;
 }
 
 #
