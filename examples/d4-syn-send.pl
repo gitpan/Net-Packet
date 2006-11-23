@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: d4-syn-send.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
+# $Id: d4-syn-send.pl,v 1.2.2.3 2006/11/23 22:44:24 gomor Exp $
 #
 use strict;
 use warnings;
@@ -39,3 +39,6 @@ until ($Env->dump->timeout) {
       last;
    }
 }
+
+$Env->dump->stop;
+$Env->dump->clean;

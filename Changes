@@ -1,5 +1,9 @@
 Revision history for Perl extension Net::Packet.
 
+3.23 Thu Nov 23 23:47:10 CET 2006
+   - examples: updates and bugfixes
+   - tests: bugfix when test modules not available
+
 3.22 Sat Nov 18 14:44:49 CET 2006
    - update: ETH: print() now displays length instead of type if 802.3 layer
    - new: IPv4: isProtocolIgmpv4() and NP_IPv4_PROTOCOL_IGMPv4

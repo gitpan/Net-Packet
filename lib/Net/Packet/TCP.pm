@@ -1,5 +1,5 @@
 #
-# $Id: TCP.pm,v 1.3.2.9 2006/11/12 22:54:06 gomor Exp $
+# $Id: TCP.pm,v 1.3.2.10 2006/11/23 22:45:28 gomor Exp $
 #
 package Net::Packet::TCP;
 use strict;
@@ -256,7 +256,7 @@ sub print {
    my $l = $self->layer;
    my $buf = sprintf
       "$l:+$i: src:%d  dst:%d  seq:0x%04x  ack:0x%04x \n".
-      "$l: $i: off:0x%02x  x2:0x%01x  flags:0x%01x  win:%d  checksum:0x%04x  ".
+      "$l: $i: off:0x%02x  x2:0x%01x  flags:0x%02x  win:%d  checksum:0x%04x  ".
       "urp:0x%02x",
          $self->[$__src],
          $self->[$__dst],

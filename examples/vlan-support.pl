@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: vlan-support.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
+# $Id: vlan-support.pl,v 1.2.2.3 2006/11/23 22:44:24 gomor Exp $
 #
 use strict;
 use warnings;
@@ -24,6 +24,7 @@ my $d = Net::Packet::Dump->new(
 $d->start;
 $d->nextAll;
 $d->stop;
+$d->clean;
 
 for ($d->frames) {
    print $_->l2->print, "\n";

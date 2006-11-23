@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: syn-scan.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
+# $Id: syn-scan.pl,v 1.2.2.3 2006/11/23 22:44:24 gomor Exp $
 #
 use strict;
 use warnings;
@@ -139,6 +139,7 @@ sub scanOnline {
    }
 
    $dump->stop;
+   $dump->clean;
 
    printResult(\@open,       'open')     if $opts{o};
    printResult(\@closed,     'closed')   if $opts{c};
@@ -155,6 +156,7 @@ sub scanOffline {
    $dump->start;
    $dump->nextAll;
    $dump->stop;
+   $dump->clean;
 
    for ($dump->frames) {
       next unless $_->isTcp;

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: vlan-craft.pl,v 1.2.2.2 2006/11/18 14:43:31 gomor Exp $
+# $Id: vlan-craft.pl,v 1.2.2.3 2006/11/23 22:44:24 gomor Exp $
 #
 use strict;
 use warnings;
@@ -54,5 +54,8 @@ print $frame->l3->print, "\n";
 print $frame->l3->frame->l3->print, "\n";
 print $frame->l3->frame->l4->print, "\n";
 $frame->send;
+
+$Env->dump->stop;
+$Env->dump->clean;
 
 exit(0);

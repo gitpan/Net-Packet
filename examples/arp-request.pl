@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: arp-request.pl,v 1.3.2.2 2006/06/04 13:23:13 gomor Exp $
+# $Id: arp-request.pl,v 1.3.2.3 2006/11/23 22:44:24 gomor Exp $
 #
 use strict;
 use warnings;
@@ -32,9 +32,7 @@ my $arp = Net::Packet::ARP->new(
 my $frame = Net::Packet::Frame->new(l2 => $eth, l3 => $arp);
 
 print "Request:\n";
-print $frame->l2->print, "\n";
-print $frame->l3->print, "\n";
-print "padding: ", unpack('H*', $frame->padding), "\n";
+print $frame->print, "\n";
 $frame->send;
 
 until ($Env->dump->timeout) {
@@ -48,3 +46,6 @@ until ($Env->dump->timeout) {
       last;
    }
 }
+
+$Env->dump->stop;
+$Env->dump->clean;
