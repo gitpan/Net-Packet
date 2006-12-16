@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm,v 1.2.2.18 2006/11/23 22:45:04 gomor Exp $
+# $Id: Packet.pm,v 1.2.2.19 2006/12/16 15:26:40 gomor Exp $
 #
 package Net::Packet;
 use strict;
@@ -7,7 +7,7 @@ use warnings;
 
 require v5.6.1;
 
-our $VERSION = '3.23';
+our $VERSION = '3.24';
 
 require Exporter;
 our @ISA = qw(Exporter);

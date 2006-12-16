@@ -1,5 +1,5 @@
 #
-# $Id: Frame.pm,v 1.3.2.24 2006/11/15 19:40:11 gomor Exp $
+# $Id: Frame.pm,v 1.3.2.25 2006/12/16 15:27:32 gomor Exp $
 #
 package Net::Packet::Frame;
 use warnings;
@@ -29,6 +29,7 @@ require Net::Packet::OSPF;
 require Net::Packet::IGMPv4;
 require Net::Packet::RAW;
 require Net::Packet::SLL;
+require Net::Packet::VLAN;
 
 use Time::HiRes qw(gettimeofday);
 use Net::Packet::Env qw($Env);

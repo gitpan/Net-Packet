@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-Packet
-version:             3.23
+version:             3.24
 abstract:            a framework to easily send and receive frames from layer 2 to layer 7
 license:             Artistic
 generated_by:        ExtUtils::MakeMaker version 6.31
@@ -11,9 +11,8 @@ requires:
     Net::IPv6Addr:                 0
     Net::Libdnet:                  0
     Net::Pcap:                     0.12
-    Net::Write:                    0.83
+    Net::Write:                    1.00
     Socket6:                       0
-    Storable:                      0
     Time::HiRes:                   0
 meta-spec:
     url:     http://module-build.sourceforge.net/META-spec-v1.2.html

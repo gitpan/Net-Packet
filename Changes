@@ -1,5 +1,9 @@
 Revision history for Perl extension Net::Packet.
 
+3.24 Sat Dec 16 17:48:15 CET 2006
+   - NEW: now supports big-endian archs (IPv4 and IPv6 update)
+   - bugfix: Frame: require VLAN
+
 3.23 Thu Nov 23 23:47:10 CET 2006
    - examples: updates and bugfixes
    - tests: bugfix when test modules not available

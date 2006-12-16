@@ -1,5 +1,5 @@
 #
-# $Id: IPv6.pm,v 1.3.2.10 2006/11/18 13:00:56 gomor Exp $
+# $Id: IPv6.pm,v 1.3.2.11 2006/12/16 15:28:20 gomor Exp $
 #
 package Net::Packet::IPv6;
 use strict;
@@ -31,6 +31,8 @@ __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
 
 no strict 'vars';
+
+require Bit::Vector;
 
 sub new {
    shift->SUPER::new(
@@ -71,12 +73,13 @@ sub computeLengths {
 sub pack {
    my $self = shift;
 
-   my $vtf1 = packIntToNet($self->[$__version],      'C',  0,  4);
-   my $vtf2 = packIntToNet($self->[$__trafficClass], 'C',  4,  8);
-   my $vtf3 = packIntToNet($self->[$__flowLabel],    'N', 12, 20);
+   my $version      = Bit::Vector->new_Dec(4,  $self->[$__version]);
+   my $trafficClass = Bit::Vector->new_Dec(8,  $self->[$__trafficClass]);
+   my $flowLabel    = Bit::Vector->new_Dec(20, $self->[$__flowLabel]);
+   my $v32          = $version->Concat_List($trafficClass, $flowLabel);
 
-   $self->[$__raw] = $self->SUPER::pack('B32nCCa*a*',
-      $vtf1.$vtf2.$vtf3,
+   $self->[$__raw] = $self->SUPER::pack('NnCCa*a*',
+      $v32->to_Dec,
       $self->[$__payloadLength],
       $self->[$__nextHeader],
       $self->[$__hopLimit],
@@ -90,13 +93,15 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($vtf, $pl, $nh, $hl, $sa, $da, $payload) =
-      $self->SUPER::unpack('B32nCCa16a16 a*', $self->[$__raw])
+   my ($vTcFl, $pl, $nh, $hl, $sa, $da, $payload) =
+      $self->SUPER::unpack('NnCCa16a16 a*', $self->[$__raw])
          or return undef;
 
-   $self->[$__version]       = unpackIntFromNet($vtf, 'C',  0,  4,  4);
-   $self->[$__trafficClass]  = unpackIntFromNet($vtf, 'C',  4,  0,  8);
-   $self->[$__flowLabel]     = unpackIntFromNet($vtf, 'N', 12, 12, 20);
+   my $v32 = Bit::Vector->new_Dec(32,  $vTcFl);
+
+   $self->[$__flowLabel]     = $v32->Chunk_Read(20,  0);
+   $self->[$__trafficClass]  = $v32->Chunk_Read( 8, 20);
+   $self->[$__version]       = $v32->Chunk_Read( 4, 28);
    $self->[$__payloadLength] = $pl;
    $self->[$__nextHeader]    = $nh;
    $self->[$__hopLimit]      = $hl;
