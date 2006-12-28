@@ -1,5 +1,5 @@
 #
-# $Id: Utils.pm,v 1.2.2.12 2006/11/12 18:43:45 gomor Exp $
+# $Id: Utils.pm,v 1.2.2.13 2006/12/28 10:11:45 gomor Exp $
 #
 package Net::Packet::Utils;
 use strict;
@@ -37,7 +37,7 @@ our %EXPORT_TAGS = (
 );
 
 use Socket;
-use Socket6 qw(NI_NUMERICHOST NI_NUMERICSERV inet_pton inet_ntop);
+use Socket6 qw(NI_NUMERICHOST NI_NUMERICSERV inet_pton inet_ntop getaddrinfo getnameinfo);
 require Net::Libdnet;
 require Net::IPv4Addr;
 require Net::IPv6Addr;
