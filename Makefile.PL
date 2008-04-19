@@ -1,12 +1,12 @@
 #
-# $Id: Makefile.PL,v 1.3.2.7 2006/12/16 15:26:26 gomor Exp $
+# $Id: Makefile.PL 1565 2008-04-19 16:41:49Z gomor $
 #
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
    NAME          => 'Net::Packet',
    VERSION_FROM  => 'lib/Net/Packet.pm',
-   LICENSE       => 'Artistic',
+   LICENSE       => 'artistic',
    PREREQ_PM     => {
       Class::Gomor  => '1.00',
       Net::Pcap     => '0.12',

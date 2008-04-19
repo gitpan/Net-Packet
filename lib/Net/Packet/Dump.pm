@@ -1,5 +1,5 @@
 #
-# $Id: Dump.pm,v 1.3.2.17 2006/11/15 19:32:29 gomor Exp $
+# $Id: Dump.pm 1564 2008-04-19 16:34:46Z gomor $
 #
 package Net::Packet::Dump;
 use strict;
@@ -35,6 +35,7 @@ our @AS = qw(
    noLayerWipe
    mode
    keepTimestamp
+   snaplen
    _pid
    _pcapd
    _dumper
@@ -82,6 +83,7 @@ sub new {
       frames         => [],
       mode           => NP_DUMP_MODE_ONLINE,
       keepTimestamp  => 0,
+      snaplen        => 1514,
       _sDataAwaiting => 0,
       _sName         => "netpacket-tmp-$$.@{[getRandom32bitsInt()]}.storable",
       @_,
@@ -219,7 +221,7 @@ sub _startTcpdump {
    my $err;
    my $pd = Net::Pcap::open_live(
       $self->[$__dev],
-      1514,
+      $self->[$__snaplen],
       $self->[$__promisc],
       1000,
       \$err,
@@ -641,6 +643,7 @@ Net::Packet::Dump - a tcpdump-like object providing frame capturing and more
       file          => 'live.pcap',
       filter        => 'tcp',
       promisc       => 1,
+      snaplen       => 1514,
       noStore       => 1,
       keepTimestamp => 1,
       unlinkOnClean => 0,
@@ -757,6 +760,10 @@ Is auto set to 1 when a timeout has occured. It is not reset to 0 automatically,
 
 If you want to capture in promiscuous mode, set it to 1. Default to 0.
 
+=item B<snaplen>
+
+If you want to capture a different snaplen, set it a number. Default to 1514.
+
 =item B<link>
 
 This attribute tells which datalink type is used for .pcap files.
@@ -828,6 +835,8 @@ overwrite:       0
 timeout:         0
 
 promisc:         0
+
+snaplen:         1514
 
 timeoutOnNext:   3
 

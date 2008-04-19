@@ -65,7 +65,6 @@ LICENSE
 LICENSE.Artistic
 Makefile.PL
 MANIFEST
-META.yml
 README
 t/01-layer-create.t
 t/01-pod-coverage.t
@@ -99,3 +98,4 @@ t/26-d4-lo-ipv6-tcp-opt-l7.t
 t/27-d4-eth-ipv6-udp-l7.t
 t/28-d4-eth-icmp.t
 test-env.sh
+META.yml                                 Module meta-data (added by MakeMaker)

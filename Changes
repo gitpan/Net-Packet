@@ -1,5 +1,10 @@
 Revision history for Perl extension Net::Packet.
 
+3.26 Sat Apr 19 18:41:12 CEST 2008
+   - new: added possibility to adjust snaplen in Dump.pm
+     => contributed by Darien Kindlund
+   - bugfix: examples/read-pcap.pl
+
 3.25 Thu Dec 28 11:11:19 CET 2006
    - bugfix: Utils.pm: forget to load some subs for IPv6 handling
 

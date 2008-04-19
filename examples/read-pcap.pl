@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: read-pcap.pl,v 1.2.2.2 2006/06/04 13:23:13 gomor Exp $
+# $Id: read-pcap.pl 1565 2008-04-19 16:41:49Z gomor $
 #
 use strict;
 use warnings;
@@ -18,10 +18,12 @@ $Env->noFrameAutoDesc(1);
 $Env->noFrameAutoDump(1);
 
 my $dump = Net::Packet::Dump->new(
+   mode          => NP_DUMP_MODE_OFFLINE,
    file          => $opts{f},
    filter        => $opts{F} || '',
    noStore       => 1,
    unlinkOnClean => 0,
+   overwrite     => 0,
 );
 
 $dump->start;
