@@ -1,5 +1,5 @@
 #
-# $Id: DescL4.pm,v 1.3.2.7 2006/11/04 12:29:29 gomor Exp $
+# $Id: DescL4.pm 1640 2009-11-09 17:58:27Z gomor $
 #
 package Net::Packet::DescL4;
 use strict;
@@ -148,7 +148,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

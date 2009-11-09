@@ -1,5 +1,5 @@
 #
-# $Id: ICMPv4.pm,v 1.3.2.9 2006/11/12 20:28:34 gomor Exp $
+# $Id: ICMPv4.pm 1640 2009-11-09 17:58:27Z gomor $
 #
 package Net::Packet::ICMPv4;
 use strict;
@@ -714,7 +714,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

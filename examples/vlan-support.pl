@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: vlan-support.pl,v 1.2.2.3 2006/11/23 22:44:24 gomor Exp $
+# $Id: vlan-support.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

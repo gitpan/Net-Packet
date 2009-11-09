@@ -1,5 +1,13 @@
 Revision history for Perl extension Net::Packet.
 
+*** This will probably be the last release. From now on, please use 
+Net::Frame::* modules on CPAN. This framework is obsolete.
+
+3.27 Mon Nov  9 19:19:57 CET 2009
+   - bugfix: PPPoE packing payload
+   => http://rt.cpan.org/Public/Bug/Display.html?id=51112
+   - update: copyright notice
+
 3.26 Sat Apr 19 18:41:12 CEST 2008
    - new: added possibility to adjust snaplen in Dump.pm
      => contributed by Darien Kindlund

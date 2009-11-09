@@ -14,12 +14,11 @@ layers 2, 3, 4 and 7.
 
 Basically, you forge each layer of a frame (Net::Packet::IPv4 for layer 3, 
 Net::Packet::TCP for layer 4 ; for example), and pack all of this into a 
-Net::Packet::Frame object. Then, you can send the frame to the network, and 
-receive it easily, since the response is automatically searched for and 
-matched against the request.
+Net::Packet::Frame object. Then, you can send the frame to the network, 
+and receive it easily, since the response is automatically searched for 
+and matched against the request.
 
-If you want some layer 2, 3 or 4 protocol encoding/decoding to be added, just 
-ask, and give a corresponding .pcap file ;)
+*** This framework is obsolete. Use Net::Frame::* now.
 
 INSTALLATION
 
@@ -40,6 +39,7 @@ This module requires these other modules and libraries:
   Net::Write
   Net::Libdnet
   Time::HiRes
+  Net::IPv4Addr
   Net::IPv6Addr
   Socket6
   Bit::Vector
@@ -47,22 +47,21 @@ This module requires these other modules and libraries:
 
 GETTING HELP
 
-A mailing list is available for all questions concerning Net::Packet, just 
-send a message to netpacket-users@gomor.org (this is a moderated list).
+*** No more help will be provided. Use Net::Frame::* now.
 
 LIMITATIONS
 
 Does NOT work under big endian architecture.
 
-Performances (memory usage, object creation speed) may be quite limited for 
-now. I will work on it in the near (or not) future. So this module can only 
-handle a few thousand packets on a 512MB RAM machine. Since Net::Packet 3.00, 
-performances are better, with some memory optimizations.
+Performances (memory usage, object creation speed) may be quite limited 
+for now. I will work on it in the near (or not) future. So this module 
+can only handle a few thousand packets on a 512MB RAM machine. Since 
+Net::Packet 3.00, performances are better, with some memory optimizations.
 
 COPYRIGHT AND LICENSE
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.
 
-Copyright (c) 2004-2006, Patrice <GomoR> Auffret
+Copyright (c) 2004-2009, Patrice <GomoR> Auffret
 

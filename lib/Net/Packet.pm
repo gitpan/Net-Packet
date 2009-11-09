@@ -1,5 +1,5 @@
 #
-# $Id: Packet.pm 1565 2008-04-19 16:41:49Z gomor $
+# $Id: Packet.pm 1643 2009-11-09 18:21:00Z gomor $
 #
 package Net::Packet;
 use strict;
@@ -7,7 +7,7 @@ use warnings;
 
 require v5.6.1;
 
-our $VERSION = '3.26';
+our $VERSION = '3.27';
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -64,7 +64,7 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
 
 =head1 SYNOPSIS
 
-   # Load all modules, it also initializes a Net::Packet::Env object, 
+   # Load all modules, it also initializes a Net::Packet::Env object, 
    # and imports all utility subs and constants in current namespace
    # WARNING: this is not the prefered way to use Net::Packet
    use Net::Packet;
@@ -81,7 +81,7 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
 
    $frame->send;
 
-   # Print the reply just when it has been received
+   # Print the reply just when it has been received
    until ($Env->dump->timeout) {
       if ($frame->recv) {
          print $frame->reply->l3, "\n";
@@ -115,13 +115,13 @@ Net::Packet - a framework to easily send and receive frames from layer 2 to laye
    );
    $dump->start;
 
-   # Build IPv4 header
+   # Build IPv4 header
    my $ip = Net::Packet::IPv4->new(dst => '192.168.0.1');
 
-   # Build TCP header
+   # Build TCP header
    my $tcp = Net::Packet::TCP->new(dst => 22);
 
-   # Assamble frame. Because we have created Desc and Dump objects, 
+   # Assamble frame. Because we have created Desc and Dump objects, 
    # they will not be automatically created here
    my $frame = Net::Packet::Frame->new(l3 => $ip, l4 => $tcp);
    $frame->send;
@@ -221,7 +221,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

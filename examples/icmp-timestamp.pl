@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: icmp-timestamp.pl,v 1.3.2.2 2006/11/23 22:44:24 gomor Exp $
+# $Id: icmp-timestamp.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

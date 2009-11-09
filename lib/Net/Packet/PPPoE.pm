@@ -1,5 +1,5 @@
 #
-# $Id: PPPoE.pm,v 1.1.2.3 2006/11/14 19:19:16 gomor Exp $
+# $Id: PPPoE.pm 1641 2009-11-09 18:01:24Z gomor $
 #
 package Net::Packet::PPPoE;
 use strict;
@@ -47,12 +47,13 @@ sub pack {
    my $type    = Bit::Vector->new_Dec(4, $self->[$__type]);
    my $v8      = $version->Concat_List($type);
 
-   $self->[$__raw] = $self->SUPER::pack('CCnnn',
+   $self->[$__raw] = $self->SUPER::pack('CCnnna*',
       $v8->to_Dec,
       $self->[$__code],
       $self->[$__sessionId],
       $self->[$__payloadLength],
       $self->[$__pppProtocol],
+      $self->[$__payload],
    ) or return undef;
 
    1;
@@ -211,7 +212,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

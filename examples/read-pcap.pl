@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: read-pcap.pl 1565 2008-04-19 16:41:49Z gomor $
+# $Id: read-pcap.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

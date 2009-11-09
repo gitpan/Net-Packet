@@ -1,5 +1,5 @@
 #
-# $Id: PPP.pm,v 1.1.2.3 2006/11/14 19:17:51 gomor Exp $
+# $Id: PPP.pm 1640 2009-11-09 17:58:27Z gomor $
 #
 package Net::Packet::PPP;
 use strict;
@@ -175,7 +175,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

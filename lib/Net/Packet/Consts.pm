@@ -1,5 +1,5 @@
 #
-# $Id: Consts.pm,v 1.2.2.11 2006/11/15 19:28:13 gomor Exp $
+# $Id: Consts.pm 1640 2009-11-09 17:58:27Z gomor $
 #
 package Net::Packet::Consts;
 use strict;
@@ -498,7 +498,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

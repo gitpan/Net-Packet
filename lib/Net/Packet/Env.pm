@@ -1,5 +1,5 @@
 #
-# $Id: Env.pm,v 1.2.2.19 2006/11/15 19:33:03 gomor Exp $
+# $Id: Env.pm 1643 2009-11-09 18:21:00Z gomor $
 #
 package Net::Packet::Env;
 use strict;
@@ -86,6 +86,9 @@ sub new {
    $self->[$__ip]         = $self->getIp     unless $self->[$__ip];
    $self->[$__ip6]        = $self->getIp6    unless $self->[$__ip6];
    $self->[$__gatewayIp]  = getGatewayIp()   unless $self->[$__gatewayIp];
+
+   print STDERR "*** Net::Packet is obsolete, you will receive no ".
+                "support.\n*** Now use Net::Frame::* modules.\n";
 
    $self;
 }
@@ -379,7 +382,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
    
-Copyright (c) 2004-2006, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2004-2009, Patrice E<lt>GomoRE<gt> Auffret
    
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

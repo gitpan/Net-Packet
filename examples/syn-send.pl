@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: syn-send.pl,v 1.3.2.3 2006/11/23 22:44:24 gomor Exp $
+# $Id: syn-send.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

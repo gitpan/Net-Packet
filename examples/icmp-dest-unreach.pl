@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: icmp-dest-unreach.pl,v 1.3.2.1 2006/06/04 13:23:13 gomor Exp $
+# $Id: icmp-dest-unreach.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

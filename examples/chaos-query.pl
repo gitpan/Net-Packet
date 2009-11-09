@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: chaos-query.pl,v 1.3.2.2 2006/11/23 22:44:24 gomor Exp $
+# $Id: chaos-query.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

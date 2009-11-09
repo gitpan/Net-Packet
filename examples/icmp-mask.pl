@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# $Id: icmp-mask.pl,v 1.3.2.2 2006/11/23 22:44:24 gomor Exp $
+# $Id: icmp-mask.pl 1640 2009-11-09 17:58:27Z gomor $
 #
 use strict;
 use warnings;

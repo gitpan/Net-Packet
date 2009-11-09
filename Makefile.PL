@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.PL 1565 2008-04-19 16:41:49Z gomor $
+# $Id: Makefile.PL 1640 2009-11-09 17:58:27Z gomor $
 #
 use ExtUtils::MakeMaker;
 
@@ -14,9 +14,10 @@ WriteMakefile(
       Net::Libdnet  => 0,
       Time::HiRes   => 0,
       Net::IPv6Addr => 0,
+      Net::IPv4Addr => 0,
       Socket6       => 0,
       Bit::Vector   => 0,
    },
    ABSTRACT_FROM => 'lib/Net/Packet.pm',
-   AUTHOR        => 'GomoR <perl@gomor.org>',
+   AUTHOR        => 'GomoR <gomor-cpan_at_gomor.org>',
 );
